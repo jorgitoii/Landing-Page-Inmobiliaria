@@ -29,6 +29,11 @@ const servePlyAssets = {
 
 export default defineConfig({
   plugins: [vue(), servePlyAssets],
+  resolve: {
+    alias: {
+      '@': resolve(__dirname, 'src'),
+    },
+  },
   build: {
     emptyOutDir: false,
     outDir: 'dist',

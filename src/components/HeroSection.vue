@@ -51,7 +51,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { startGlbPreload } from '@/composables/useModelPreloader.js'
+import { startGlbPreload } from '../composables/useModelPreloader.js'
 
 const heroEl  = ref(null)
 const videoEl = ref(null)

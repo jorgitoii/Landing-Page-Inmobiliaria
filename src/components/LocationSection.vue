@@ -216,7 +216,7 @@ import { EffectComposer }  from 'three/examples/jsm/postprocessing/EffectCompose
 import { RenderPass }      from 'three/examples/jsm/postprocessing/RenderPass.js'
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
 import { ShaderPass }      from 'three/examples/jsm/postprocessing/ShaderPass.js'
-import { glbBlobUrl }      from '@/composables/useModelPreloader.js'
+import { glbBlobUrl }      from '../composables/useModelPreloader.js'
 
 /* ── Discovery overlays (se remueven al entrar 10% en cada bloque) ─ */
 const galleryBlockEl   = ref(null)

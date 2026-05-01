@@ -28,7 +28,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { glbLoadPct } from '@/composables/useModelPreloader.js'
+import { glbLoadPct } from '../composables/useModelPreloader.js'
 const sectionEl = ref(null)
 
 // Bar 0→100% maps to download 0→40%
