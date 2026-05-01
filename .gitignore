@@ -15,6 +15,12 @@ dist-ssr
 # Assets pesados — imágenes, videos, splats (445 MB — no subir al repo)
 public/assets
 
+# Backups y archivos temporales del sistema
+*.bak
+*.bak2
+.fuse_hidden*
+src/src/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
