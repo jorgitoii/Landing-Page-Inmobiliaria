@@ -385,7 +385,7 @@ onUnmounted(() => {
   position: absolute; top: 10px; right: 10px; z-index: 3;
   display: flex; flex-direction: column; align-items: center; gap: 2px;
   color: rgba(200,225,240,0.80);
-  animation: pulse360 3s ease-in-out infinite;
+  animation: pulse360 4.2s ease-in-out infinite;
   pointer-events: none;
 }
 .badge-360 svg {
