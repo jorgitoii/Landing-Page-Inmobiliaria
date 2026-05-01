@@ -69,7 +69,12 @@
               <h3 class="loc-title">森</h3>
               <div class="loc-subtitle-row">
                 <p class="loc-subtitle">Boutique</p>
-                <p class="loc-amenities">★★★★★ · Pet Friendly · Spa &amp; Onsen · 8 Suites</p>
+                <p class="loc-amenities">
+                  <span>★★★★★</span><span class="amen-dot"> · </span>
+                  <span>Pet Friendly</span><span class="amen-dot"> · </span>
+                  <span>Spa &amp; Onsen</span><span class="amen-dot"> · </span>
+                  <span>8 Suites</span>
+                </p>
               </div>
             </div>
             <div class="loc-header-right">
@@ -1266,8 +1271,10 @@ const close3d = () => { show3d.value = false; cancelAnimationFrame(fAnimId); if 
 }
 .loc-amenities {
   font-family: var(--font-serif); font-size: 11px; font-weight: 300;
-  letter-spacing: 0.18em; color: rgba(200,225,240,0.55);
+  letter-spacing: 0.15em; color: rgba(200,225,240,0.55);
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0;
 }
+.amen-dot { opacity: 0.5; }
 .loc-rule {
   width: 100%; height: 1px;
   background: linear-gradient(to right, rgba(122,180,212,0.2), transparent);
@@ -1550,7 +1557,8 @@ const close3d = () => { show3d.value = false; cancelAnimationFrame(fAnimId); if 
   /* "Boutique" y amenidades van en columna para no comprimirse */
   .loc-subtitle-row { flex-direction: column; gap: 3px; }
   .loc-subtitle     { font-size: 14px; letter-spacing: 0.22em; }
-  .loc-amenities    { font-size: 9.5px; letter-spacing: 0.09em; line-height: 1.6; }
+  .loc-amenities    { font-size: 9.5px; letter-spacing: 0.09em; flex-direction: column; gap: 2px; }
+  .amen-dot         { display: none; }
 
   /* ── Header row → columna ── */
   .loc-header-row   { flex-direction: column; gap: 10px; }
@@ -1583,6 +1591,6 @@ const close3d = () => { show3d.value = false; cancelAnimationFrame(fAnimId); if 
   /* Concepto & Superficie en columna en pantallas muy pequeñas */
   .loc-header-right { flex-direction: column; gap: 8px; }
   .loc-info-row     { flex: unset; min-width: unset; }
-  .loc-amenities    { font-size: 9px; }
+  .loc-amenities    { font-size: 9px; gap: 1px; }
 }
 </style>
