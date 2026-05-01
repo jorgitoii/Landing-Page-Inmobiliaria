@@ -13,7 +13,7 @@
       <div class="mg-content">
         <p class="mg-eyebrow">Espacios · Hotel Lain</p>
         <div class="mg-grid">
-          <div v-for="img in galleryGrid" :key="img.src" class="mg-cell cell-360" @click="open360(img.src360)">
+          <div v-for="img in galleryGrid" :key="img.src" class="mg-cell cell-360" @click.stop="open360(img.src360)">
             <div class="mg-cell-img-wrap">
               <img :src="img.src" :alt="img.alt" />
               <div class="mg-cell-overlay"></div>
@@ -1472,7 +1472,7 @@ const close3d = () => { show3d.value = false; cancelAnimationFrame(fAnimId); if 
 .ov-close:hover { border-color: var(--color-accent); color: var(--color-accent); }
 .ov-close svg   { width: 20px; height: 20px; }
 .sphere-wrap { width: 84vw; max-width: 1100px; display: flex; flex-direction: column; gap: 14px; }
-.sphere-canvas { width: 100%; height: 64vh; display: block; cursor: grab; border: 1px solid rgba(122,180,212,0.12); filter: brightness(0.90) saturate(2.02) contrast(1.34) sepia(0.35); }
+.sphere-canvas { width: 100%; height: 64vh; display: block; cursor: grab; border: 1px solid rgba(122,180,212,0.12); filter: brightness(0.90) saturate(1.7) contrast(1) sepia(0.35); }
 .sphere-canvas:active { cursor: grabbing; }
 
 /* ── Circular float (used by all hint icons) ────────────── */
