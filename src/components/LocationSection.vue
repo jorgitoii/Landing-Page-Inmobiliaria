@@ -1508,7 +1508,50 @@ const close3d = () => { show3d.value = false; cancelAnimationFrame(fAnimId); if 
 .galleryHintFade-enter-active, .galleryHintFade-leave-active { transition: opacity 0.6s ease; }
 .galleryHintFade-enter-from,  .galleryHintFade-leave-to      { opacity: 0; }
 
-/* ── Transition overlays ────────────────────────────────── */
+/* ── Transition overlays ──────────
 .ofade-enter-active, .ofade-leave-active { transition: opacity 0.45s ease; }
 .ofade-enter-from,   .ofade-leave-to     { opacity: 0; }
+
+/* ══════════════════════════════════════════════════════════
+   RESPONSIVE
+   ══════════════════════════════════════════════════════════ */
+@media (max-width: 900px) {
+  .loc-bottom-grid { grid-template-columns: 1fr; padding: 0 16px; gap: 16px; }
+  .model-card      { min-height: 340px; }
+  .model-wrap      { min-height: 300px; }
+}
+
+@media (max-width: 768px) {
+  .mg-grid     { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .mg-content  { padding: 32px 20px 40px; }
+  .mg-eyebrow  { font-size: 10px; letter-spacing: 0.32em; margin-bottom: 18px; }
+
+  .loc-block        { padding: 40px 0 36px; }
+  .loc-bottom-grid  { grid-template-columns: 1fr; padding: 0 14px; gap: 14px; }
+
+  .loc-info         { padding: 18px 16px 14px; }
+  .loc-title        { font-size: clamp(2rem, 9vw, 3rem); }
+  .loc-subtitle     { font-size: 14px; }
+  .loc-amenities    { font-size: 10px; }
+  .loc-info-row span{ font-size: 11px; }
+  .loc-info-row p   { font-size: 14px; }
+  .loc-address      { font-size: 13px; }
+  .loc-poi-label    { font-size: 11px; }
+  .poi-btn          { font-size: 13px; padding: 5px 8px; }
+  .loc-map          { height: 170px; }
+
+  .model-card  { min-height: 280px; }
+  .model-wrap  { min-height: 240px; }
+  .compass-svg { width: 48px; height: 48px; }
+  .compass-wrap{ bottom: 40px; right: 12px; }
+
+  .sphere-wrap   { width: 96vw; }
+  .sphere-canvas { height: 52vh; }
+}
+
+@media (max-width: 480px) {
+  .mg-grid  { grid-template-columns: 1fr; }
+  .loc-header-row   { flex-direction: column; gap: 10px; }
+  .loc-header-right { border-left: none; padding-left: 0; border-top: 1px solid rgba(122,180,212,0.12); padding-top: 10px; }
+}
 </style>

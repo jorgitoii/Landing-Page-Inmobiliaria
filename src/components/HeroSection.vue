@@ -298,4 +298,12 @@ onUnmounted(() => { window.removeEventListener('scroll', onScroll) })
   text-transform: uppercase;
   margin-top: 8px;
 }
+
+@media (max-width: 768px) {
+  .hero-video   { object-fit: cover; }
+  .hero-title   { font-size: clamp(2.8rem, 13vw, 5rem); margin-bottom: 16px; }
+  .hero-sub     { font-size: clamp(0.8rem, 3.5vw, 1rem); letter-spacing: 0.10em; }
+  .hero-tagline { font-size: 10px; margin-bottom: 12px; }
+  .scroll-hint  { bottom: 28px; }
+}
 </style>

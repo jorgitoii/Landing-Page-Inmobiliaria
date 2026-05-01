@@ -416,4 +416,12 @@ onUnmounted(() => {
   background: #c8e0f0;
   transform: scale(1.6);
 }
+
+@media (max-width: 768px) {
+  .rest-label { font-family: Georgia, serif; }
+  .rest-nav-dots { right: 12px; gap: 7px; }
+  .rest-dot { width: 5px; height: 5px; }
+  .rest-header-overlay { top: 6vh; left: 4vw; }
+  .rest-title { font-size: clamp(1.4rem, 6vw, 2.4rem); }
+}
 </style>

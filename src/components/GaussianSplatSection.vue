@@ -835,5 +835,16 @@ function loadScript (src) {
   background: var(--color-accent);
   transition: width 0.3s ease;
 }
+
+@media (max-width: 768px) {
+  .gs-section      { padding: 0; }
+  .gs-ui-layer     { padding: 24px 20px; }
+  .gs-title        { font-size: clamp(1.5rem, 6vw, 2.5rem); letter-spacing: 0.08em; }
+  .gs-eyebrow      { font-size: 10px; letter-spacing: 0.3em; }
+  .gs-opts         { gap: 12px; flex-direction: column; align-items: center; }
+  .gs-opt          { width: 180px; padding: 16px 18px; }
+  .gs-opt-label    { font-size: clamp(0.75rem, 3vw, 0.9rem); }
+  .gs-back-btn     { font-size: 10px; padding: 9px 18px; }
+}
 </style>
          

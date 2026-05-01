@@ -411,9 +411,17 @@ onUnmounted(() => {
   .columns-wrapper { gap: 28px; }
   .scroll-col { max-width: 260px; }
 }
+@media (max-width: 768px) {
+  .pricing-section { padding: 80px 20px 90px; }
+  .pricing-title   { font-size: clamp(1.6rem, 6vw, 2.4rem); }
+  .pricing-eyebrow { font-size: 11px; letter-spacing: 0.3em; }
+}
 @media (max-width: 640px) {
-  .pricing-section { padding: 80px 24px 90px; }
-  .columns-wrapper { flex-direction: column; align-items: center; gap: 36px; }
-  .scroll-col { max-width: 280px; width: 100%; }
+  .pricing-section { padding: 72px 18px 80px; }
+  .columns-wrapper { flex-direction: column; align-items: center; gap: 32px; }
+  .scroll-col      { max-width: 300px; width: 100%; }
+  .suite-name      { font-size: 0.95rem; }
+  .suite-desc      { font-size: 0.80rem; }
+  .suite-price     { font-size: 0.98rem; }
 }
 </style>

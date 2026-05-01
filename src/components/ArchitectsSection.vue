@@ -125,4 +125,11 @@ onUnmounted(() => { window.removeEventListener('scroll', onScroll) })
   transition: opacity 0.8s ease 0.55s, transform 0.8s ease 0.55s; margin-top: 4px;
 }
 .arch-architects.visible { opacity: 1; transform: translateY(0); }
+
+@media (max-width: 768px) {
+  .arch-section    { padding: 0 24px; }
+  .arch-liebheart  { font-size: clamp(3.5rem, 18vw, 6rem); }
+  .arch-signed     { font-size: clamp(0.7rem, 3vw, 1rem); letter-spacing: 0.18em; }
+  .arch-architects { font-size: clamp(0.75rem, 3.2vw, 1rem); letter-spacing: 0.18em; }
+}
 </style>
