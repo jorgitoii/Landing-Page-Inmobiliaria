@@ -216,6 +216,7 @@ import { EffectComposer }  from 'three/examples/jsm/postprocessing/EffectCompose
 import { RenderPass }      from 'three/examples/jsm/postprocessing/RenderPass.js'
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
 import { ShaderPass }      from 'three/examples/jsm/postprocessing/ShaderPass.js'
+import { glbBlobUrl }      from '@/composables/useModelPreloader.js'
 
 /* ── Discovery overlays (se remueven al entrar 10% en cada bloque) ─ */
 const galleryBlockEl   = ref(null)
@@ -810,8 +811,12 @@ function _addModelToScene (model, scene, camera, controls) {
 function _loadModel () {
   if (_cachedModel || modelProgress.value > 0) return   // ya cargando o cargado
   modelProgress.value = 1   // inicia
+  // Use preloaded blob if already downloaded, otherwise fall back to CDN
+  const url = glbBlobUrl.value
+    ? glbBlobUrl.value
+    : 'https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/3D/Maqueta.glb'
   new GLTFLoader().load(
-    'https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/3D/Maqueta.glb',
+    url,
     gltf => {
       _cachedModel = gltf.scene
       modelProgress.value = 100
@@ -1532,9 +1537,22 @@ const close3d = () => { show3d.value = false; cancelAnimationFrame(fAnimId); if 
   .loc-info         { padding: 18px 16px 14px; }
   .loc-title        { font-size: clamp(2rem, 9vw, 3rem); }
   .loc-subtitle     { font-size: 14px; }
-  .loc-amenities    { font-size: 10px; }
+
+  /* Amenities: tighten spacing so it doesn't overflow */
+  .loc-amenities    { font-size: 9.5px; letter-spacing: 0.10em; }
+
+  /* Stack header-left + header-right vertically */
+  .loc-header-row   { flex-direction: column; gap: 8px; }
+  .loc-header-right {
+    border-left: none; padding-left: 0;
+    border-top: 1px solid rgba(122,180,212,0.12); padding-top: 10px;
+    flex-direction: row; gap: 20px;
+  }
+  /* Concepto & Superficie side-by-side */
+  .loc-info-row     { flex: 1; }
   .loc-info-row span{ font-size: 11px; }
   .loc-info-row p   { font-size: 14px; }
+
   .loc-address      { font-size: 13px; }
   .loc-poi-label    { font-size: 11px; }
   .poi-btn          { font-size: 13px; padding: 5px 8px; }
@@ -1551,7 +1569,8 @@ const close3d = () => { show3d.value = false; cancelAnimationFrame(fAnimId); if 
 
 @media (max-width: 480px) {
   .mg-grid  { grid-template-columns: 1fr; }
-  .loc-header-row   { flex-direction: column; gap: 10px; }
-  .loc-header-right { border-left: none; padding-left: 0; border-top: 1px solid rgba(122,180,212,0.12); padding-top: 10px; }
+  /* Stack Concepto & Superficie back to column at very small screens */
+  .loc-header-right { flex-direction: column; gap: 8px; }
+  .loc-info-row     { flex: unset; }
 }
 </style>

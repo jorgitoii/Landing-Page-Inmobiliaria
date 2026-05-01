@@ -51,6 +51,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { startGlbPreload } from '@/composables/useModelPreloader.js'
 
 const heroEl  = ref(null)
 const videoEl = ref(null)
@@ -103,6 +104,9 @@ const discoveryOp = computed(() => {
 
 /* ---- Boot animation sequence ---- */
 onMounted(() => {
+  // Kick off GLB preload immediately (background, doesn't block UI)
+  startGlbPreload()
+
   // Total chars: 6 + 10 + 7 = 23  => last char at 500 + 22*92 = ~2524ms
   setTimeout(() => { charsVisible.value = true }, 200)
 

@@ -48,6 +48,19 @@
         />
       </nav>
 
+      <!-- Swipe hint — visible on mobile when section is active -->
+      <Transition name="hint-fade">
+        <div class="swipe-hint" v-if="showHint">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="hint-arrow hint-up">
+            <polyline points="18 15 12 9 6 15"/>
+          </svg>
+          <span class="hint-label">Desliza para explorar</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="hint-arrow hint-down">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </div>
+      </Transition>
+
     </div>
   </section>
 </template>
@@ -113,6 +126,8 @@ const imgRenderedH = ref(0)
 const vpW          = ref(typeof window !== 'undefined' ? window.innerWidth  : 1920)
 const vpH          = ref(typeof window !== 'undefined' ? window.innerHeight : 1080)
 const introOp      = ref(1)   // 1 = negro opaco → 0 = transparente (igual que ArchitectsSection)
+const showHint     = ref(false)
+let   hintTimer    = null
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Image wrapper transform — centers the active waypoint in the viewport
@@ -163,10 +178,21 @@ let obs      = null
 let io       = null
 let hijacked = false
 
+function hideHint() {
+  showHint.value = false
+  if (hintTimer) { clearTimeout(hintTimer); hintTimer = null }
+}
+
 function startHijack(fromBelow) {
   if (hijacked) return
   hijacked       = true
   activeWp.value = fromBelow ? WAYPOINTS.length - 1 : 0
+
+  // Show swipe hint on mobile, auto-dismiss after 3.5 s
+  if (vpW.value <= 768) {
+    showHint.value = true
+    hintTimer = setTimeout(hideHint, 3500)
+  }
 
   obs = Observer.create({
     target: window,
@@ -174,6 +200,7 @@ function startHijack(fromBelow) {
     tolerance: 10,
     preventDefault: true,
     onDown: () => {                                  // scroll hacia abajo → siguiente plato
+      hideHint()
       if (activeWp.value < WAYPOINTS.length - 1) {
         activeWp.value++
       } else {
@@ -181,6 +208,7 @@ function startHijack(fromBelow) {
       }
     },
     onUp: () => {                                    // scroll hacia arriba → plato anterior
+      hideHint()
       if (activeWp.value > 0) {
         activeWp.value--
       } else {
@@ -193,6 +221,7 @@ function startHijack(fromBelow) {
 function stopHijack() {
   if (obs)   { obs.kill(); obs = null }
   hijacked = false
+  hideHint()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -248,6 +277,7 @@ onMounted(() => {
 onUnmounted(() => {
   stopHijack()
   if (io) { io.disconnect(); io = null }
+  if (hintTimer) { clearTimeout(hintTimer); hintTimer = null }
   window.removeEventListener('scroll', onScroll)
   window.removeEventListener('resize', onResize)
 })
@@ -424,4 +454,44 @@ onUnmounted(() => {
   .rest-header-overlay { top: 6vh; left: 4vw; }
   .rest-title { font-size: clamp(1.4rem, 6vw, 2.4rem); }
 }
+
+/* ── Swipe hint (mobile only) ─────────────────────────────────── */
+.swipe-hint {
+  position: absolute;
+  bottom: 6vh;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  pointer-events: none;
+}
+.hint-arrow {
+  width: 24px; height: 24px;
+  color: rgba(200, 224, 240, 0.72);
+}
+.hint-up  { animation: hintBounceUp   1.5s ease-in-out infinite; }
+.hint-down { animation: hintBounceDown 1.5s ease-in-out infinite; }
+.hint-label {
+  font-family: Georgia, serif;
+  font-size: 10.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(200, 224, 240, 0.60);
+}
+@keyframes hintBounceUp {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-4px); }
+}
+@keyframes hintBounceDown {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(4px); }
+}
+/* Hide on desktop */
+@media (min-width: 769px) { .swipe-hint { display: none !important; } }
+
+.hint-fade-enter-active, .hint-fade-leave-active { transition: opacity 0.55s ease; }
+.hint-fade-enter-from,   .hint-fade-leave-to     { opacity: 0; }
 </style>

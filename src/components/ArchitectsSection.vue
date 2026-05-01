@@ -14,12 +14,25 @@
       </span>
       <span class="arch-architects" :class="{ visible: tv }">architects</span>
     </div>
+
+  <!-- 3D preload progress bar -->
+  <div class="preload-bar-wrap" :class="{ done: barFill >= 100 }">
+    <span class="preload-label">Cargando modelo 3D&thinsp;·&thinsp;{{ Math.round(barFill) }}%</span>
+    <div class="preload-track">
+      <div class="preload-fill" :style="{ width: barFill + '%' }"></div>
+    </div>
+  </div>
+
   </section>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { glbLoadPct } from '@/composables/useModelPreloader.js'
 const sectionEl = ref(null)
+
+// Bar 0→100% maps to download 0→40%
+const barFill = computed(() => Math.min(100, (glbLoadPct.value / 40) * 100))
 const tv      = ref(false)   // textVisible
 const cv      = ref([])      // charVisible
 const sp      = ref(0)       // scrollProgress
@@ -131,5 +144,40 @@ onUnmounted(() => { window.removeEventListener('scroll', onScroll) })
   .arch-liebheart  { font-size: clamp(3.5rem, 18vw, 6rem); }
   .arch-signed     { font-size: clamp(0.7rem, 3vw, 1rem); letter-spacing: 0.18em; }
   .arch-architects { font-size: clamp(0.75rem, 3.2vw, 1rem); letter-spacing: 0.18em; }
+}
+
+/* ── 3D preload bar ─────────────────────────────────────────────── */
+.preload-bar-wrap {
+  position: absolute;
+  bottom: 0; left: 5%; right: 5%;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding-bottom: 12px;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 0.9s ease 0.5s;
+}
+.preload-bar-wrap.done { opacity: 0; }
+.preload-label {
+  font-family: var(--font-serif);
+  font-size: 8.5px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: rgba(122, 180, 212, 0.38);
+}
+.preload-track {
+  width: 100%;
+  height: 1px;
+  background: rgba(122, 180, 212, 0.08);
+  overflow: hidden;
+}
+.preload-fill {
+  height: 100%;
+  background: linear-gradient(to right, rgba(122,180,212,0.65), rgba(122,180,212,0.18));
+  transition: width 0.45s ease;
+  min-width: 3px;
 }
 </style>
