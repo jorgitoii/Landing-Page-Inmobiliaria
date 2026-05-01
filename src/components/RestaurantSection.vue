@@ -414,4 +414,6 @@ onUnmounted(() => {
 
 .rest-dot.active {
   background: #c8e0f0;
-  transform: scale
+  transform: scale(1.6);
+}
+</style>

@@ -296,3 +296,6 @@ onUnmounted(() => { window.removeEventListener('scroll', onScroll) })
   letter-spacing: 0.45em;
   color: rgba(200,225,240,0.35);
   text-transform: uppercase;
+  margin-top: 8px;
+}
+</style>

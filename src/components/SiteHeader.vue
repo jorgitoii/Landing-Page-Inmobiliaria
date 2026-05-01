@@ -59,4 +59,8 @@ onUnmounted(() => { window.removeEventListener("scroll", onScroll) })
 .brand-sub    { font-family: var(--font-jp); font-size: 11px; font-weight: 200; letter-spacing: 0.2em; color: var(--color-accent); margin-top: 3px; }
 .header-nav   { display: flex; align-items: center; gap: 24px; }
 .header-nav a { font-family: var(--font-serif); font-size: 11.5px; font-weight: 400; letter-spacing: 0.20em; color: rgba(200,225,240,0.65); text-decoration: none; text-transform: uppercase; transition: color 0.3s ease; position: relative; }
-.header-nav a::after { content: ""; position: absolute; bottom: -3px; left: 0; width: 0; height: 1px; backgro
+.header-nav a::after { content: ""; position: absolute; bottom: -3px; left: 0; width: 0; height: 1px; background: var(--color-accent); transition: width 0.35s ease; }
+.header-nav a:hover { color: rgba(200,225,240,1); }
+.header-nav a:hover::after { width: 100%; }
+.nav-contact { color: var(--color-accent) !important; opacity: 0.9; }
+</style>

@@ -1409,3 +1409,7 @@ const close3d = () => { show3d.value = false; cancelAnimationFrame(fAnimId); if 
 /* ── Auto-highlight: Templo pulsa, resto se atenúa ─────── */
 @keyframes poiAutoPulse {
   0%, 100% { opacity: 1;
+  }
+  50% { opacity: 0.45; }
+}
+</style>

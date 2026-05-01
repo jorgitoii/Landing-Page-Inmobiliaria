@@ -124,4 +124,5 @@ onUnmounted(() => { window.removeEventListener('scroll', onScroll) })
   opacity: 0; transform: translateY(-12px);
   transition: opacity 0.8s ease 0.55s, transform 0.8s ease 0.55s; margin-top: 4px;
 }
-.arch-architects.visible { opacity: 1; transform: translate
+.arch-architects.visible { opacity: 1; transform: translateY(0); }
+</style>
