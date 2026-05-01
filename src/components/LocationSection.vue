@@ -1420,11 +1420,18 @@ const close3d = () => { show3d.value = false; cancelAnimationFrame(fAnimId); if 
   opacity: 0.90;
   filter: brightness(1.6) saturate(0.5);
 }
-/* ── Auto-highlight: Templo pulsa, resto se atenúa ─────── */
+/* ── Auto-highlight: primer botón pulsa, resto se atenúa ── */
+.poi-auto-pulse {
+  animation: poiAutoPulse 1.8s ease-in-out infinite;
+  border-color: rgba(122,180,212,0.28) !important;
+}
+.poi-auto-dim {
+  opacity: 0.42;
+  transition: opacity 0.55s ease;
+}
 @keyframes poiAutoPulse {
-  0%, 100% { opacity: 1;
-  }
-  50% { opacity: 0.45; }
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.52; }
 }
 
 /* ── Model card ────────────────────────────────────────── */
@@ -1536,23 +1543,26 @@ const close3d = () => { show3d.value = false; cancelAnimationFrame(fAnimId); if 
   .loc-bottom-grid  { grid-template-columns: 1fr; padding: 0 14px; gap: 14px; }
 
   .loc-info         { padding: 18px 16px 14px; }
+
+  /* ── Kanji + subtítulos ── */
   .loc-title        { font-size: clamp(2rem, 9vw, 3rem); }
-  .loc-subtitle     { font-size: 14px; }
 
-  /* Amenities: tighten spacing so it doesn't overflow */
-  .loc-amenities    { font-size: 9.5px; letter-spacing: 0.10em; }
+  /* "Boutique" y amenidades van en columna para no comprimirse */
+  .loc-subtitle-row { flex-direction: column; gap: 3px; }
+  .loc-subtitle     { font-size: 14px; letter-spacing: 0.22em; }
+  .loc-amenities    { font-size: 9.5px; letter-spacing: 0.09em; line-height: 1.6; }
 
-  /* Stack header-left + header-right vertically */
-  .loc-header-row   { flex-direction: column; gap: 8px; }
+  /* ── Header row → columna ── */
+  .loc-header-row   { flex-direction: column; gap: 10px; }
   .loc-header-right {
     border-left: none; padding-left: 0;
     border-top: 1px solid rgba(122,180,212,0.12); padding-top: 10px;
-    flex-direction: row; gap: 20px;
+    flex-direction: row; gap: 16px; flex-wrap: wrap;
   }
-  /* Concepto & Superficie side-by-side */
-  .loc-info-row     { flex: 1; }
-  .loc-info-row span{ font-size: 11px; }
-  .loc-info-row p   { font-size: 14px; }
+  /* Concepto & Superficie lado a lado con mínimo ancho */
+  .loc-info-row      { flex: 1; min-width: 130px; }
+  .loc-info-row span { font-size: 10px; letter-spacing: 0.22em; }
+  .loc-info-row p    { font-size: 13px; line-height: 1.45; }
 
   .loc-address      { font-size: 13px; }
   .loc-poi-label    { font-size: 11px; }
@@ -1570,8 +1580,9 @@ const close3d = () => { show3d.value = false; cancelAnimationFrame(fAnimId); if 
 
 @media (max-width: 480px) {
   .mg-grid  { grid-template-columns: 1fr; }
-  /* Stack Concepto & Superficie back to column at very small screens */
+  /* Concepto & Superficie en columna en pantallas muy pequeñas */
   .loc-header-right { flex-direction: column; gap: 8px; }
-  .loc-info-row     { flex: unset; }
+  .loc-info-row     { flex: unset; min-width: unset; }
+  .loc-amenities    { font-size: 9px; }
 }
 </style>
