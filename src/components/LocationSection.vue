@@ -1236,9 +1236,10 @@ const close3d = () => { show3d.value = false; cancelAnimationFrame(fAnimId); if 
 /* Glass */
 .glass-card {
   background: rgba(6, 16, 36, 0.22);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(122, 180, 212, 0.10);
+  filter: brightness(0.8);
 }
 
 /* ── INFO card ─────────────────────────────────────────── */

@@ -24,40 +24,91 @@
         <h2 class="gs-panel-title">Echa un vistazo a tu habitación</h2>
         <div class="gs-options">
 
-          <!-- Option 1: Mouse -->
-          <button class="gs-opt" @click="startViewer('mouse')">
-            <div class="gs-icon-wrap">
-              <!-- Ratón: rect redondeado con animación diagonal slideMouse -->
-              <svg class="icon-mouse" width="40" height="60" viewBox="0 0 40 60" fill="none">
-                <rect x="2" y="2" width="36" height="56" rx="18"
-                  stroke="currentColor" stroke-width="2.5"/>
-                <!-- scroll wheel -->
-                <line x1="20" y1="14" x2="20" y2="24"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
-              </svg>
-            </div>
-            <span class="gs-opt-label">Con mouse</span>
-          </button>
+          <!-- ── Móvil: giroscopio + touch ─────────────────── -->
+          <template v-if="isMobile">
 
-          <!-- Option 2: Face camera -->
-          <button class="gs-opt" @click="startViewer('face')">
-            <div class="gs-icon-wrap">
-              <!-- Persona + visor: head lookAround, body lookAround+delay -->
-              <svg width="60" height="60" viewBox="0 0 60 60" fill="none">
-                <!-- viewfinder dashed border -->
-                <rect x="2" y="2" width="56" height="56" rx="8"
-                  stroke="currentColor" stroke-width="1.5"
-                  stroke-dasharray="4 4" opacity="0.25"/>
-                <!-- head -->
-                <circle class="icon-head" cx="30" cy="22" r="10"
-                  stroke="currentColor" stroke-width="2.5"/>
-                <!-- body / shoulders -->
-                <path class="icon-body" d="M10 52C10 42 18 37 30 37C42 37 50 42 50 52"
-                  stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
-              </svg>
-            </div>
-            <span class="gs-opt-label">Con camara</span>
-          </button>
+            <button class="gs-opt" @click="startViewer('gyro')">
+              <div class="gs-icon-wrap">
+                <svg width="54" height="54" viewBox="0 0 54 54" fill="none">
+                  <!-- phone body -->
+                  <rect x="17" y="8" width="20" height="32" rx="4"
+                    stroke="currentColor" stroke-width="2"/>
+                  <!-- screen bottom line -->
+                  <line x1="21" y1="34" x2="33" y2="34"
+                    stroke="currentColor" stroke-width="1.2" opacity="0.4"/>
+                  <!-- rotation arc left -->
+                  <path d="M11 24 Q10 13 19 9"
+                    stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                  <polyline points="8,21 11,24 14,20"
+                    stroke="currentColor" stroke-width="1.8"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+                  <!-- rotation arc right -->
+                  <path d="M43 24 Q44 13 35 9"
+                    stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                  <polyline points="46,21 43,24 40,20"
+                    stroke="currentColor" stroke-width="1.8"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+              <span class="gs-opt-label">Con giroscopio</span>
+            </button>
+
+            <button class="gs-opt" @click="startViewer('touch')">
+              <div class="gs-icon-wrap">
+                <svg width="54" height="54" viewBox="0 0 54 54" fill="none">
+                  <!-- finger -->
+                  <path d="M27 10 C23 10 21 13 21 17 L21 34
+                           C21 40 27 43 27 43 C27 43 33 40 33 34
+                           L33 17 C33 13 31 10 27 10 Z"
+                    stroke="currentColor" stroke-width="2" fill="none"/>
+                  <!-- knuckle lines -->
+                  <line x1="21" y1="22" x2="33" y2="22"
+                    stroke="currentColor" stroke-width="1" opacity="0.35"/>
+                  <line x1="21" y1="28" x2="33" y2="28"
+                    stroke="currentColor" stroke-width="1" opacity="0.35"/>
+                  <!-- tap ripples -->
+                  <circle cx="27" cy="48" r="3"
+                    stroke="currentColor" stroke-width="1.5" opacity="0.55"/>
+                  <circle cx="27" cy="48" r="5.5"
+                    stroke="currentColor" stroke-width="1"   opacity="0.28"/>
+                </svg>
+              </div>
+              <span class="gs-opt-label">Con touch</span>
+            </button>
+
+          </template>
+
+          <!-- ── Desktop: mouse + cámara (original) ─────────── -->
+          <template v-else>
+
+            <button class="gs-opt" @click="startViewer('mouse')">
+              <div class="gs-icon-wrap">
+                <svg class="icon-mouse" width="40" height="60" viewBox="0 0 40 60" fill="none">
+                  <rect x="2" y="2" width="36" height="56" rx="18"
+                    stroke="currentColor" stroke-width="2.5"/>
+                  <line x1="20" y1="14" x2="20" y2="24"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+                </svg>
+              </div>
+              <span class="gs-opt-label">Con mouse</span>
+            </button>
+
+            <button class="gs-opt" @click="startViewer('face')">
+              <div class="gs-icon-wrap">
+                <svg width="60" height="60" viewBox="0 0 60 60" fill="none">
+                  <rect x="2" y="2" width="56" height="56" rx="8"
+                    stroke="currentColor" stroke-width="1.5"
+                    stroke-dasharray="4 4" opacity="0.25"/>
+                  <circle class="icon-head" cx="30" cy="22" r="10"
+                    stroke="currentColor" stroke-width="2.5"/>
+                  <path class="icon-body" d="M10 52C10 42 18 37 30 37C42 37 50 42 50 52"
+                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+                </svg>
+              </div>
+              <span class="gs-opt-label">Con camara</span>
+            </button>
+
+          </template>
 
         </div>
       </div>
@@ -167,6 +218,8 @@ const loadLabel = ref('Cargando escena...')
 const progress  = ref(0)
 const isPanned  = ref(false)
 
+const isMobile   = ref(typeof window !== 'undefined' && navigator.maxTouchPoints > 0)
+
 const MODE_MOUSE = 'mouse'
 const MODE_FACE  = 'face'
 let   activeMode = MODE_MOUSE
@@ -205,6 +258,12 @@ let uProj, uView, uProjY, uAspect, uSizeMult, uBscale, uOpMult, uBscale2
 // Face tracking
 let faceStream = null, faceRafId = null
 
+// Gyro + touch
+let gyroRef       = null   // { beta, gamma } calibration origin
+let gyroHandler   = null   // stored for cleanup
+let touchStartHdl = null   // stored for cleanup
+let touchMoveHdl  = null
+
 /* ========================================================
    ENTRY
    ======================================================== */
@@ -215,8 +274,58 @@ const startViewer = async (mode) => {
   await nextTick()
   initGL()
   loadPLY()
-  if (mode === MODE_FACE) setupFaceTracking()
-  else setupMouse()
+  if      (mode === 'gyro')  setupGyro()
+  else if (mode === 'face')  setupFaceTracking()
+  else if (mode === 'touch') setupTouch()
+  else                       setupMouse()
+}
+
+/* ========================================================
+   GYRO MODE — tilt phone to pan camera
+   ======================================================== */
+function setupGyro () {
+  gyroRef = null   // will calibrate on first event
+
+  const attach = () => {
+    gyroHandler = (e) => {
+      const { beta, gamma } = e
+      if (beta === null || gamma === null) return
+      if (!gyroRef) { gyroRef = { beta, gamma }; return }   // calibrate
+      const SENS = PAN_MAX / 28   // 28° tilt = full pan
+      panTargX = Math.max(-PAN_MAX, Math.min(PAN_MAX, -(gamma - gyroRef.gamma) * SENS))
+      panTargY = Math.max(-PAN_MAX, Math.min(PAN_MAX,  (beta  - gyroRef.beta)  * SENS * 0.5))
+    }
+    window.addEventListener('deviceorientation', gyroHandler, true)
+  }
+
+  // iOS 13+ needs explicit permission (triggered from button click context)
+  if (typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission === 'function') {
+    DeviceOrientationEvent.requestPermission()
+      .then(state => { if (state === 'granted') attach(); else setupTouch() })
+      .catch(() => setupTouch())
+  } else {
+    attach()
+  }
+}
+
+/* ========================================================
+   TOUCH MODE — drag finger to pan
+   ======================================================== */
+function setupTouch () {
+  const canvas = gsCanvas.value
+  if (!canvas) return
+  touchStartHdl = (e) => e.preventDefault()
+  touchMoveHdl  = (e) => {
+    e.preventDefault()
+    const t = e.touches[0]
+    const normX = (t.clientX / window.innerWidth)  * 2 - 1
+    const normY = (t.clientY / window.innerHeight) * 2 - 1
+    panTargX = Math.max(-PAN_MAX, Math.min(PAN_MAX, -normX * PAN_MAX))
+    panTargY = Math.max(-PAN_MAX, Math.min(PAN_MAX,  normY * PAN_MAX * 0.5))
+  }
+  canvas.addEventListener('touchstart', touchStartHdl, { passive: false })
+  canvas.addEventListener('touchmove',  touchMoveHdl,  { passive: false })
 }
 
 const exitViewer = () => {
@@ -233,6 +342,10 @@ function teardown () {
   window.removeEventListener('scroll', onScrollCheck)
   window.removeEventListener('mousemove', onMouseMove)
   window.removeEventListener('resize', onResize)
+  if (gyroHandler)   { window.removeEventListener('deviceorientation', gyroHandler, true); gyroHandler = null }
+  if (touchStartHdl) { gsCanvas.value?.removeEventListener('touchstart', touchStartHdl); touchStartHdl = null }
+  if (touchMoveHdl)  { gsCanvas.value?.removeEventListener('touchmove',  touchMoveHdl);  touchMoveHdl  = null }
+  gyroRef = null
   if (introFallbackTimer) { clearTimeout(introFallbackTimer); introFallbackTimer = null }
   gl = null; program = null; vao = null; splatCount = 0
 }
@@ -243,6 +356,7 @@ function teardown () {
 function centerView () {
   panTargX = 0
   panTargY = 0
+  gyroRef  = null   // re-calibrate on next gyro event
 }
 
 /* ========================================================
