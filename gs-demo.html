@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>GS — Paramétrico</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#050a0f; overflow:hidden; font-family:monospace; }
+canvas { display:block; width:100vw; height:100vh; }
+
+#ui {
+  position:fixed; top:16px; left:16px;
+  background:rgba(0,0,0,0.82); padding:13px 16px;
+  border:1px solid rgba(122,180,212,0.22);
+  font:11px/1.9 monospace; color:#8ab8d0; min-width:260px;
+  white-space:pre-wrap; z-index:10;
+}
+#ui b { color:#7ab4d4; letter-spacing:.3em; }
+#bar-wrap { height:2px; background:rgba(122,180,212,0.15); margin-top:7px; }
+#bar { height:100%; background:#7ab4d4; width:0%; transition:width .2s; }
+
+#info {
+  position:fixed; bottom:14px; left:16px;
+  font:10px monospace; color:rgba(122,180,212,0.35);
+  z-index:10;
+}
+
+/* ════ PARAMS PANEL ════ */
+#params {
+  position:fixed; top:16px; right:16px;
+  background:rgba(3,8,14,0.94);
+  border:1px solid rgba(122,180,212,0.2);
+  width:268px;
+  max-height:calc(100vh - 32px);
+  overflow-y:auto;
+  z-index:10;
+}
+#params::-webkit-scrollbar { width:2px; }
+#params::-webkit-scrollbar-thumb { background:rgba(122,180,212,0.2); }
+
+.ph {
+  padding:9px 13px;
+  display:flex; justify-content:space-between; align-items:center;
+  cursor:pointer; font-size:9px; letter-spacing:.4em; color:#7ab4d4;
+  border-bottom:1px solid rgba(122,180,212,0.12);
+  user-select:none;
+}
+.ph:hover { background:rgba(122,180,212,0.05); }
+.ph .arr { font-size:8px; transition:transform .2s; }
+
+.pg-title {
+  font-size:8px; letter-spacing:.45em; text-transform:uppercase;
+  color:rgba(122,180,212,0.4);
+  padding:9px 13px 3px;
+  border-top:1px solid rgba(122,180,212,0.08);
+  margin-top:1px;
+}
+.pg-title:first-of-type { border-top:none; }
+
+.pg-body { padding:4px 13px 8px; display:flex; flex-direction:column; gap:5px; }
+
+.pr {
+  display:grid; grid-template-columns:80px 1fr 48px;
+  gap:5px; align-items:center;
+}
+.pr label { font-size:10px; color:rgba(175,210,230,0.45); white-space:nowrap; overflow:hidden; }
+.pr input[type=range] {
+  width:100%; height:2px; cursor:pointer;
+  border:none; outline:none;
+  background:rgba(122,180,212,0.15); border-radius:1px;
+  accent-color:#7ab4d4; -webkit-appearance:none;
+}
+.pr input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance:none;
+  width:8px; height:8px; border-radius:50%;
+  background:#7ab4d4; cursor:pointer;
+}
+.pv { font-size:10px; color:#7ab4d4; text-align:right; }
+
+#btn-resort, #btn-export {
+  display:block; margin:10px 13px 0; padding:7px;
+  width:calc(100% - 26px);
+  background:none; border:1px solid rgba(122,180,212,0.22);
+  color:#7ab4d4; font:9px/1 monospace; letter-spacing:.3em;
+  text-transform:uppercase; cursor:pointer; transition:all .2s;
+}
+#btn-resort { margin-bottom:5px; }
+#btn-export { margin-bottom:12px; border-color:rgba(122,180,212,0.35); }
+#btn-resort:hover, #btn-export:hover {
+  background:rgba(122,180,212,0.1);
+  border-color:#7ab4d4; color:#b0d8f0;
+}
+#btn-export:hover { border-color:#4ab88a; color:#4ab88a; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="ui">
+  <b>GAUSSIAN — TABLE.PLY</b>
+  <span id="log">Iniciando…</span>
+  <div id="bar-wrap"><div id="bar"></div></div>
+</div>
+
+<div id="info">Mouse: pan · Click: centrar · Rueda: dist</div>
+
+<div id="params">
+  <div class="ph" id="ph-toggle">
+    <span>⚙ PARÁMETROS</span>
+    <span class="arr" id="ph-arr">▲</span>
+  </div>
+  <div id="pb">
+
+    <div class="pg-title">Cámara</div>
+    <div class="pg-body">
+      <div class="pr"><label>FOV deg</label>
+        <input type="range" id="p-fov" min="10" max="90" step="1" value="54">
+        <span class="pv" id="v-fov">54</span></div>
+      <div class="pr"><label>Zoom</label>
+        <input type="range" id="p-zoom" min="0.5" max="4" step="0.05" value="2">
+        <span class="pv" id="v-zoom">2.00</span></div>
+      <div class="pr"><label>Distancia</label>
+        <input type="range" id="p-dist" min="0.01" max="2" step="0.005" value="0.3">
+        <span class="pv" id="v-dist">0.300</span></div>
+      <div class="pr"><label>Azimut°</label>
+        <input type="range" id="p-azim" min="-180" max="180" step="0.5" value="-3.15">
+        <span class="pv" id="v-azim">-3.2</span></div>
+      <div class="pr"><label>Elevación°</label>
+        <input type="range" id="p-elev" min="-80" max="80" step="0.5" value="1.4">
+        <span class="pv" id="v-elev">1.4</span></div>
+      <div class="pr"><label>Center X</label>
+        <input type="range" id="p-cx" min="-1" max="1" step="0.001" value="0.0441">
+        <span class="pv" id="v-cx">0.044</span></div>
+      <div class="pr"><label>Center Y</label>
+        <input type="range" id="p-cy" min="-1" max="1" step="0.001" value="-0.049">
+        <span class="pv" id="v-cy">-0.049</span></div>
+      <div class="pr"><label>Center Z</label>
+        <input type="range" id="p-cz" min="-1" max="1" step="0.001" value="0.0449">
+        <span class="pv" id="v-cz">0.045</span></div>
+    </div>
+
+    <div class="pg-title">Splat</div>
+    <div class="pg-body">
+      <div class="pr"><label>Point scale</label>
+        <input type="range" id="p-pscale" min="0.1" max="6" step="0.05" value="1.7">
+        <span class="pv" id="v-pscale">1.70</span></div>
+      <div class="pr"><label>Opacity mult</label>
+        <input type="range" id="p-opmult" min="0.05" max="5" step="0.05" value="0.5">
+        <span class="pv" id="v-opmult">0.50</span></div>
+      <div class="pr"><label>Bnd sigma</label>
+        <input type="range" id="p-bsigma" min="0.5" max="8" step="0.05" value="0.65">
+        <span class="pv" id="v-bsigma">0.65</span></div>
+    </div>
+
+    <div class="pg-title">Off-axis</div>
+    <div class="pg-body">
+      <div class="pr"><label>Sensitivity</label>
+        <input type="range" id="p-sens" min="0" max="0.3" step="0.005" value="0.14">
+        <span class="pv" id="v-sens">0.140</span></div>
+      <div class="pr"><label>Lerp</label>
+        <input type="range" id="p-lerp" min="0.005" max="0.5" step="0.005" value="0.115">
+        <span class="pv" id="v-lerp">0.115</span></div>
+      <div class="pr"><label>Max offset</label>
+        <input type="range" id="p-maxoff" min="0.01" max="0.8" step="0.01" value="0.41">
+        <span class="pv" id="v-maxoff">0.410</span></div>
+    </div>
+
+    <button id="btn-resort">↺ Re-ordenar splats</button>
+    <button id="btn-export">↓ Exportar JSON</button>
+
+  </div>
+</div>
+
+<script type="module">
+/* ═══════════════════════════════════════════════════════════
+   GS Demo — Paramétrico
+   Pure WebGL2 · Sin Three.js · scene_config compatible
+   ═══════════════════════════════════════════════════════════ */
+
+const log  = s => { document.getElementById('log').textContent = s; console.log('[GS]', s) }
+const prog = p => { document.getElementById('bar').style.width = p + '%' }
+const Y_   = () => new Promise(r => setTimeout(r, 0))
+
+/* ── PARAMS ──────────────────────────────────────────────── */
+// Stored in pre-rotation space (cx,cy,cz = scene_config orbit_center)
+// All angle units: degrees in P, radians in shaders
+const P = {
+  fov:    54,    zoom:   2,
+  dist:   0.3,   azim:  -3.15, elev:  1.4,
+  cx:     0.0441,cy:   -0.049, cz:    0.0449,
+  pscale: 1.7,   opmult: 0.5,  bsigma:0.65,
+  sens:   0.14,  lerp:   0.115,maxoff:0.41,
+}
+
+// Slider definitions: [sliderId, valueId, key, decimals]
+const SLIDERS = [
+  ['p-fov',    'v-fov',    'fov',    0],
+  ['p-zoom',   'v-zoom',   'zoom',   2],
+  ['p-dist',   'v-dist',   'dist',   3],
+  ['p-azim',   'v-azim',   'azim',   1],
+  ['p-elev',   'v-elev',   'elev',   1],
+  ['p-cx',     'v-cx',     'cx',     3],
+  ['p-cy',     'v-cy',     'cy',     3],
+  ['p-cz',     'v-cz',     'cz',     3],
+  ['p-pscale', 'v-pscale', 'pscale', 2],
+  ['p-opmult', 'v-opmult', 'opmult', 2],
+  ['p-bsigma', 'v-bsigma', 'bsigma', 2],
+  ['p-sens',   'v-sens',   'sens',   3],
+  ['p-lerp',   'v-lerp',   'lerp',   3],
+  ['p-maxoff', 'v-maxoff', 'maxoff', 3],
+]
+
+function bindSliders () {
+  for (const [sid, vid, key, dec] of SLIDERS) {
+    const sl = document.getElementById(sid)
+    const vl = document.getElementById(vid)
+    sl.addEventListener('input', () => {
+      P[key] = parseFloat(sl.value)
+      vl.textContent = P[key].toFixed(dec)
+    })
+  }
+}
+
+function syncSlider (key) {
+  const row = SLIDERS.find(r => r[2] === key)
+  if (!row) return
+  const sl = document.getElementById(row[0])
+  const vl = document.getElementById(row[1])
+  sl.value = P[key]
+  vl.textContent = P[key].toFixed(row[3])
+}
+
+/* ── WebGL2 context ──────────────────────────────────────── */
+const canvas = document.getElementById('c')
+canvas.width  = window.innerWidth
+canvas.height = window.innerHeight
+const gl = canvas.getContext('webgl2', { antialias: false, premultipliedAlpha: true })
+if (!gl) { log('ERROR: WebGL2 no soportado'); throw new Error('no webgl2') }
+
+window.addEventListener('resize', () => {
+  canvas.width = window.innerWidth; canvas.height = window.innerHeight
+  gl.viewport(0, 0, canvas.width, canvas.height)
+})
+
+/* ── Shaders ─────────────────────────────────────────────── */
+const VERT = `#version 300 es
+precision highp float;
+
+in vec2  a_corner;
+in vec3  a_pos;
+in vec4  a_color;
+in float a_size;
+
+uniform mat4  u_proj;
+uniform mat4  u_view;
+uniform float u_projY;
+uniform float u_aspect;
+uniform float u_offx;
+uniform float u_size_mult;   // = P.pscale
+uniform float u_bscale;      // = P.bsigma / sqrt(5)
+
+out vec4 v_color;
+out vec2 v_uv;
+
+void main() {
+  vec4 vp = u_view * vec4(a_pos, 1.0);
+  if (vp.z >= -0.001) { gl_Position = vec4(0.0,0.0,2.0,1.0); return; }
+  vec4 clip = u_proj * vp;
+  vec2 ndc  = clip.xy / clip.w;
+  float depth = -vp.z;
+  // bscale extends the quad so we sample the Gaussian tail
+  float ndcH = a_size * u_size_mult * u_bscale * u_projY / depth;
+  float ndcW = ndcH / u_aspect;
+  v_color = a_color;
+  v_uv    = a_corner;
+  gl_Position = vec4(ndc + a_corner * vec2(ndcW, ndcH) + vec2(u_offx, 0.0), clip.z/clip.w, 1.0);
+}
+`
+
+const FRAG = `#version 300 es
+precision mediump float;
+
+in vec4 v_color;
+in vec2 v_uv;
+out vec4 out_color;
+
+uniform float u_op_mult;    // = P.opmult
+uniform float u_bscale2;    // = (P.bsigma/sqrt(5))^2
+
+void main() {
+  float r2 = dot(v_uv, v_uv);
+  if (r2 > 1.0) discard;
+  // Gaussian kernel, corrected for bscale
+  float alpha = exp(-2.5 * r2 * u_bscale2) * v_color.a * u_op_mult;
+  if (alpha < 0.003) discard;
+  out_color = vec4(v_color.rgb * alpha, alpha);
+}
+`
+
+function makeShader (type, src) {
+  const s = gl.createShader(type)
+  gl.shaderSource(s, src); gl.compileShader(s)
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+    const e = gl.getShaderInfoLog(s); log('SHADER ERR: '+e); throw new Error(e)
+  }
+  return s
+}
+function makeProgram (vs, fs) {
+  const p = gl.createProgram()
+  gl.attachShader(p, vs); gl.attachShader(p, fs); gl.linkProgram(p)
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
+    const e = gl.getProgramInfoLog(p); log('PROG ERR: '+e); throw new Error(e)
+  }
+  return p
+}
+const program = makeProgram(makeShader(gl.VERTEX_SHADER, VERT), makeShader(gl.FRAGMENT_SHADER, FRAG))
+
+/* ── Uniform / attribute locations ──────────────────────── */
+const uProj     = gl.getUniformLocation(program, 'u_proj')
+const uView     = gl.getUniformLocation(program, 'u_view')
+const uProjY    = gl.getUniformLocation(program, 'u_projY')
+const uAspect   = gl.getUniformLocation(program, 'u_aspect')
+const uOffX     = gl.getUniformLocation(program, 'u_offx')
+const uSizeMult = gl.getUniformLocation(program, 'u_size_mult')
+const uBscale   = gl.getUniformLocation(program, 'u_bscale')
+const uOpMult   = gl.getUniformLocation(program, 'u_op_mult')
+const uBscale2  = gl.getUniformLocation(program, 'u_bscale2')
+
+const aCorner = gl.getAttribLocation(program, 'a_corner')
+const aPos    = gl.getAttribLocation(program, 'a_pos')
+const aColor  = gl.getAttribLocation(program, 'a_color')
+const aSize   = gl.getAttribLocation(program, 'a_size')
+
+/* ── Camera math ─────────────────────────────────────────── */
+function perspective (fov, aspect, near, far) {
+  const f = 1/Math.tan(fov/2), nf = 1/(near-far)
+  return new Float32Array([
+    f/aspect,0,0,0,  0,f,0,0,  0,0,(far+near)*nf,-1,  0,0,2*far*near*nf,0
+  ])
+}
+function lookAt (ex,ey,ez,tx,ty,tz) {
+  const S=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]]
+  const D=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2]
+  const X=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]]
+  const N=a=>{const l=Math.hypot(...a);return a.map(v=>v/l)}
+  const z=N(S([ex,ey,ez],[tx,ty,tz])),x=N(X([0,1,0],z)),y=X(z,x)
+  return new Float32Array([
+    x[0],y[0],z[0],0, x[1],y[1],z[1],0, x[2],y[2],z[2],0,
+    -D(x,[ex,ey,ez]),-D(y,[ex,ey,ez]),-D(z,[ex,ey,ez]),1
+  ])
+}
+
+function getCam () {
+  const fov = P.fov * Math.PI / 180 / P.zoom
+  const azR = P.azim * Math.PI / 180
+  const elR = P.elev * Math.PI / 180
+  const ce  = Math.cos(elR), se = Math.sin(elR)
+  const ca  = Math.cos(azR), sa = Math.sin(azR)
+  // Apply scene rotation (x,y,z)→(x,-y,-z) to orbit_center
+  const tx =  P.cx, ty = -P.cy, tz = -P.cz
+  const ex  = tx + P.dist*sa*ce
+  const ey  = ty + P.dist*se
+  const ez  = tz + P.dist*ca*ce
+  return { fov, view: lookAt(ex,ey,ez,tx,ty,tz) }
+}
+
+/* ── Mouse / input controls ──────────────────────────────── */
+// Pan mode: mouse position → world-space camera offset (no orbit, no R-drag)
+let panTargX=0, panTargY=0, panCurrX=0, panCurrY=0
+const PAN_MAX = () => P.sens * P.maxoff   // world-space pan limit
+
+// Center-view hint
+const hint = document.createElement('div')
+hint.id = 'gs-hint'
+hint.style.cssText = [
+  'position:fixed','bottom:22px','left:50%','transform:translateX(-50%)',
+  'font:10px monospace','letter-spacing:.35em','color:rgba(122,180,212,0.4)',
+  'pointer-events:none','z-index:20','opacity:0','transition:opacity .4s',
+].join(';')
+hint.textContent = '· click izquierdo para centrar vista ·'
+document.body.appendChild(hint)
+
+canvas.addEventListener('mousemove', e => {
+  const normX = (e.clientX / canvas.width)  * 2 - 1
+  const normY = (e.clientY / canvas.height) * 2 - 1
+  const pm = PAN_MAX()
+  panTargX = Math.max(-pm, Math.min(pm, -normX * pm))
+  panTargY = Math.max(-pm, Math.min(pm,  normY * pm * 0.5))
+})
+
+canvas.addEventListener('click', () => {
+  panTargX = 0; panTargY = 0
+})
+
+canvas.addEventListener('wheel', e => {
+  P.dist = Math.max(0.01, Math.min(5, P.dist * (1 + e.deltaY*0.001)))
+  syncSlider('dist')
+}, { passive:true })
+
+/* ── PLY data (raw, no baked multipliers) ────────────────── */
+const SH_C0=0.28209479, STRIDE=14
+let rawPos=null, rawCol=null, rawSz=null
+let vao=null, splatCount=0, ready=false
+
+async function loadPLY () {
+  log('Descargando Table.ply…'); prog(0)
+  const resp = await fetch('/assets/3D/Guassian/Table.ply')
+  if (!resp.ok) { log('ERROR '+resp.status); return }
+
+  const total=parseInt(resp.headers.get('Content-Length')||'0')
+  const reader=resp.body.getReader(); const chunks=[]; let rx=0
+  while(true){const{done,value}=await reader.read();if(done)break;chunks.push(value);rx+=value.length;if(total)prog(Math.round(rx/total*38))}
+  prog(40); log('Ensamblando…'); await Y_()
+
+  const ab=new ArrayBuffer(rx); const raw=new Uint8Array(ab); let off=0
+  for(const c of chunks){raw.set(c,off);off+=c.length}
+
+  const peek=new TextDecoder('ascii').decode(raw.slice(0,4096))
+  const em=peek.indexOf('end_header'); if(em===-1){log('ERROR header');return}
+  let hdr=em+10; if(raw[hdr]===13)hdr++; if(raw[hdr]===10)hdr++
+  const nm=peek.match(/element vertex (\d+)/); if(!nm){log('ERROR count');return}
+  const N=parseInt(nm[1])
+
+  log('N='+N.toLocaleString()+'\nDecodificando…'); prog(45); await Y_()
+
+  const binLen=N*STRIDE*4; const aligned=new ArrayBuffer(binLen)
+  new Uint8Array(aligned).set(new Uint8Array(ab,hdr,binLen))
+  const data=new Float32Array(aligned)
+
+  // Decode — rotation y=-180,z=180: (x,y,z)→(x,-y,-z)
+  // No POINT_SC or OP_MULT baked — they live as shader uniforms
+  rawPos=new Float32Array(N*3); rawCol=new Float32Array(N*4); rawSz=new Float32Array(N)
+  for(let i=0;i<N;i++){
+    const b=i*STRIDE
+    rawPos[i*3]  = data[b];   rawPos[i*3+1]=-data[b+1]; rawPos[i*3+2]=-data[b+2]
+    rawCol[i*4]  = Math.min(1,Math.max(0,SH_C0*data[b+3]+0.5))
+    rawCol[i*4+1]= Math.min(1,Math.max(0,SH_C0*data[b+4]+0.5))
+    rawCol[i*4+2]= Math.min(1,Math.max(0,SH_C0*data[b+5]+0.5))
+    rawCol[i*4+3]= Math.min(1, 1/(1+Math.exp(-data[b+6])))  // raw sigmoid, no mult
+    const s0=Math.exp(data[b+7]),s1=Math.exp(data[b+8]),s2=Math.exp(data[b+9])
+    rawSz[i]=Math.max(s0,s1,s2)*2.0   // 2σ radius, no point_scale baked
+  }
+  prog(68); log('Ordenando…'); await Y_()
+  await buildSorted()
+}
+
+async function buildSorted () {
+  const N = rawPos.length/3
+  const {view} = getCam()
+  const dep = new Float32Array(N)
+  for(let i=0;i<N;i++){
+    const x=rawPos[i*3],y=rawPos[i*3+1],z=rawPos[i*3+2]
+    dep[i]=view[2]*x+view[6]*y+view[10]*z+view[14]
+  }
+  const idx=new Uint32Array(N); for(let i=0;i<N;i++)idx[i]=i
+  idx.sort((a,b)=>dep[a]-dep[b])
+
+  prog(84); log('Subiendo GPU…'); await Y_()
+
+  const sPos=new Float32Array(N*3),sCol=new Float32Array(N*4),sSz=new Float32Array(N)
+  for(let j=0;j<N;j++){
+    const i=idx[j]
+    sPos[j*3]=rawPos[i*3]; sPos[j*3+1]=rawPos[i*3+1]; sPos[j*3+2]=rawPos[i*3+2]
+    sCol[j*4]=rawCol[i*4]; sCol[j*4+1]=rawCol[i*4+1]; sCol[j*4+2]=rawCol[i*4+2]; sCol[j*4+3]=rawCol[i*4+3]
+    sSz[j]=rawSz[i]
+  }
+  buildVAO(sPos,sCol,sSz)
+  splatCount=N; ready=true
+  prog(100)
+  log('✓ '+N.toLocaleString()+' gaussianos\nArrastra o mueve el mouse')
+  document.getElementById('bar').style.background='#4ab88a'
+}
+
+function buildVAO (pos,col,sz) {
+  if (vao) gl.deleteVertexArray(vao)
+  vao=gl.createVertexArray(); gl.bindVertexArray(vao)
+  const corners=new Float32Array([-1,-1,1,-1,1,1,-1,-1,1,1,-1,1])
+  function addBuf(d,loc,size,div){
+    const b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b)
+    gl.bufferData(gl.ARRAY_BUFFER,d,gl.STATIC_DRAW)
+    gl.enableVertexAttribArray(loc)
+    gl.vertexAttribPointer(loc,size,gl.FLOAT,false,0,0)
+    gl.vertexAttribDivisor(loc,div)
+  }
+  addBuf(corners,aCorner,2,0)
+  addBuf(pos,    aPos,   3,1)
+  addBuf(col,    aColor, 4,1)
+  addBuf(sz,     aSize,  1,1)
+  gl.bindVertexArray(null)
+}
+
+/* ── Render loop ─────────────────────────────────────────── */
+function render () {
+  requestAnimationFrame(render)
+  gl.viewport(0,0,canvas.width,canvas.height)
+  gl.clearColor(0.02,0.039,0.059,1)
+  gl.clear(gl.COLOR_BUFFER_BIT)
+  if (!ready) return
+
+  gl.enable(gl.BLEND)
+  gl.blendEquation(gl.FUNC_ADD)
+  gl.blendFuncSeparate(gl.ONE,gl.ONE_MINUS_SRC_ALPHA,gl.ONE,gl.ONE_MINUS_SRC_ALPHA)
+  gl.disable(gl.DEPTH_TEST)
+
+  // Smooth pan lerp
+  panCurrX += (panTargX - panCurrX) * P.lerp
+  panCurrY += (panTargY - panCurrY) * P.lerp
+
+  // Show / hide center hint
+  const panned = Math.abs(panCurrX) + Math.abs(panCurrY) > 0.001
+  hint.style.opacity = panned ? '1' : '0'
+
+  // Pan: rebuild camera with pan offset added to orbit center
+  const fov = P.fov * Math.PI / 180 / P.zoom
+  const azR = P.azim * Math.PI/180, elR = P.elev * Math.PI/180
+  const ce=Math.cos(elR),se=Math.sin(elR),ca=Math.cos(azR),sa=Math.sin(azR)
+  const tx= P.cx+panCurrX, ty=-P.cy+panCurrY, tz=-P.cz
+  const ex=tx+P.dist*sa*ce, ey=ty+P.dist*se, ez=tz+P.dist*ca*ce
+  const view = lookAt(ex,ey,ez,tx,ty,tz)
+
+  const aspect  = canvas.width/canvas.height
+  const projMat = perspective(fov, aspect, 0.001, 50)
+  const projY   = 1/Math.tan(fov/2)
+  const bs      = P.bsigma / Math.sqrt(5)
+
+  gl.useProgram(program)
+  gl.uniformMatrix4fv(uProj,  false, projMat)
+  gl.uniformMatrix4fv(uView,  false, view)
+  gl.uniform1f(uProjY,    projY)
+  gl.uniform1f(uAspect,   aspect)
+  gl.uniform1f(uOffX,     0)   // no NDC parallax
+  gl.uniform1f(uSizeMult, P.pscale)
+  gl.uniform1f(uBscale,   bs)
+  gl.uniform1f(uBscale2,  bs*bs)
+  gl.uniform1f(uOpMult,   P.opmult)
+
+  gl.bindVertexArray(vao)
+  gl.drawArraysInstanced(gl.TRIANGLES,0,6,splatCount)
+  gl.bindVertexArray(null)
+}
+
+/* ── Buttons ─────────────────────────────────────────────── */
+document.getElementById('btn-resort').addEventListener('click', async () => {
+  if (!rawPos) return
+  document.getElementById('btn-resort').textContent = '↺ Ordenando…'
+  await Y_()
+  await buildSorted()
+  document.getElementById('btn-resort').textContent = '↺ Re-ordenar splats'
+})
+
+document.getElementById('btn-export').addEventListener('click', () => {
+  const json = {
+    "_info": {
+      "title": "Off-Axis Gaussian Splatting — Scene Config",
+      "version": "1.0",
+      "generated": new Date().toISOString()
+    },
+    "ply_path": "\\Demo japonesa\\assets\\3D\\Table.ply",
+    "params": {
+      "camera": {
+        "fov_deg":      P.fov,
+        "orbit_azim":   +P.azim.toFixed(2),
+        "orbit_elev":   +P.elev.toFixed(2),
+        "orbit_dist":   +P.dist.toFixed(4),
+        "orbit_center": {
+          "x": +P.cx.toFixed(4),
+          "y": +P.cy.toFixed(4),
+          "z": +P.cz.toFixed(4)
+        }
+      },
+      "scene": {
+        "zoom":     +P.zoom.toFixed(2),
+        "rotation": { "x": 0, "y": -180, "z": 180 }
+      },
+      "splat": {
+        "point_scale":    +P.pscale.toFixed(3),
+        "opacity_mult":   +P.opmult.toFixed(3),
+        "bounding_sigma": +P.bsigma.toFixed(3),
+        "cloudiness": 0
+      },
+      "offaxis_reaction": {
+        "sensitivity": +P.sens.toFixed(4),
+        "lerp":        +P.lerp.toFixed(4),
+        "max_offset":  +P.maxoff.toFixed(4)
+      }
+    }
+  }
+  const blob = new Blob([JSON.stringify(json, null, 2)], { type:'application/json' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = 'scene_config.json'
+  a.click()
+})
+
+/* ── Panel toggle ────────────────────────────────────────── */
+document.getElementById('ph-toggle').addEventListener('click', () => {
+  const pb  = document.getElementById('pb')
+  const arr = document.getElementById('ph-arr')
+  const hidden = pb.style.display === 'none'
+  pb.style.display  = hidden ? '' : 'none'
+  arr.textContent   = hidden ? '▲' : '▼'
+})
+
+/* ── Init ────────────────────────────────────────────────── */
+log('WebGL2 OK')
+bindSliders()
+render()
+loadPLY().catch(e => { log('ERROR: '+e.message); console.error(e) })
+</script>
+</body>
+</html>

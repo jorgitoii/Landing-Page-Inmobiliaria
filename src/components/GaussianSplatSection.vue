@@ -1,0 +1,839 @@
+<template>
+  <section class="gs-section" id="gaussian" ref="sectionEl">
+
+    <!-- VIDEO — siempre en DOM, controlado por fase:
+         intro  → reproduce a pantalla completa (z alta)
+         panel  → último frame congelado de fondo
+         viewer → último frame congelado encima del canvas (marco)
+         Sin autoplay: arranca cuando el usuario llega al 38% de la sección -->
+    <video
+      ref="introVideo"
+      class="gs-intro-video"
+      :class="`phase-${phase}`"
+      src="https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/Video/Gaussian_video.webm"
+      muted playsinline preload="auto"
+      @timeupdate="onVideoTimeUpdate"
+      @ended="onVideoEnded"
+      @error="onVideoEnded"
+    ></video>
+
+    <!-- PANEL: discovery mode selection -->
+    <Transition name="gsfade">
+      <div v-if="phase === 'panel'" class="gs-panel">
+        <p class="gs-eyebrow">Suite · Vista al bosque</p>
+        <h2 class="gs-panel-title">Echa un vistazo a tu habitación</h2>
+        <div class="gs-options">
+
+          <!-- Option 1: Mouse -->
+          <button class="gs-opt" @click="startViewer('mouse')">
+            <div class="gs-icon-wrap">
+              <!-- Ratón: rect redondeado con animación diagonal slideMouse -->
+              <svg class="icon-mouse" width="40" height="60" viewBox="0 0 40 60" fill="none">
+                <rect x="2" y="2" width="36" height="56" rx="18"
+                  stroke="currentColor" stroke-width="2.5"/>
+                <!-- scroll wheel -->
+                <line x1="20" y1="14" x2="20" y2="24"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+              </svg>
+            </div>
+            <span class="gs-opt-label">Con mouse</span>
+          </button>
+
+          <!-- Option 2: Face camera -->
+          <button class="gs-opt" @click="startViewer('face')">
+            <div class="gs-icon-wrap">
+              <!-- Persona + visor: head lookAround, body lookAround+delay -->
+              <svg width="60" height="60" viewBox="0 0 60 60" fill="none">
+                <!-- viewfinder dashed border -->
+                <rect x="2" y="2" width="56" height="56" rx="8"
+                  stroke="currentColor" stroke-width="1.5"
+                  stroke-dasharray="4 4" opacity="0.25"/>
+                <!-- head -->
+                <circle class="icon-head" cx="30" cy="22" r="10"
+                  stroke="currentColor" stroke-width="2.5"/>
+                <!-- body / shoulders -->
+                <path class="icon-body" d="M10 52C10 42 18 37 30 37C42 37 50 42 50 52"
+                  stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <span class="gs-opt-label">Con camara</span>
+          </button>
+
+        </div>
+      </div>
+    </Transition>
+
+    <!-- VIEWER: gaussian splatting canvas -->
+    <Transition name="gsfade">
+      <div v-if="phase === 'viewer'" class="gs-viewer">
+        <!-- Back arrow top-left -->
+        <button class="gs-back" @click="exitViewer" title="Volver">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M19 12H5M12 5l-7 7 7 7"/>
+          </svg>
+        </button>
+        <!-- Canvas (click = centrar) -->
+        <canvas ref="gsCanvas" class="gs-canvas" @click="centerView"></canvas>
+        <!-- Indicador: vista descentrada -->
+        <div v-if="isPanned && !loading" class="gs-center-hint">
+          · Click izquierdo para centrar vista ·
+        </div>
+        <!-- Loading overlay -->
+        <div v-if="loading" class="gs-loading">
+          <p class="gs-loading-txt">{{ loadLabel }}</p>
+          <div class="gs-bar-wrap"><div class="gs-bar" :style="{ width: progress + '%' }"></div></div>
+        </div>
+        <!-- Hidden video for face tracking -->
+        <video ref="gsVideo" class="gs-video" playsinline autoplay muted></video>
+        <!-- Bottom home button -->
+        <button class="gs-home" @click="exitViewer">Cambiar modo</button>
+      </div>
+    </Transition>
+
+    <!-- Discovery overlay -->
+    <div class="gs-discovery" :style="{ opacity: discoveryOp }"></div>
+
+  </section>
+</template>
+
+<script setup>
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+
+/* ========================================================
+   PHASE MANAGEMENT
+   ======================================================== */
+const phase       = ref('intro')   // intro | panel | viewer
+const sectionEl   = ref(null)
+const discoveryOp = ref(1)
+const introVideo = ref(null)
+let   introFallbackTimer = null
+let   videoStarted = false        // evita arrancar el video más de una vez
+
+// Arranca el video — se llama solo cuando scroll llega al 38%
+function startVideo () {
+  if (videoStarted) return
+  videoStarted = true
+  window.removeEventListener('scroll', onScrollCheck, { passive: true })
+  const v = introVideo.value
+  if (v) v.play().catch(() => {})
+  // Seguro extra: pasar al panel tras 12 s en caso de fallo total
+  introFallbackTimer = setTimeout(() => {
+    if (phase.value === 'intro') phase.value = 'panel'
+  }, 12000)
+}
+
+// Scroll listener: comprueba si la sección está al ≥38% en pantalla
+const onScrollCheck = () => {
+  if (!sectionEl.value) return
+  const r  = sectionEl.value.getBoundingClientRect()
+  const vh = window.innerHeight
+  // progress = qué fracción de la sección ha entrado en el viewport
+  const progress = (vh - r.top) / r.height
+  // Discovery overlay: opacidad 1 → 0 al pisar el 10%
+  discoveryOp.value = Math.max(0, 1 - progress / 0.10)
+  if (progress >= 0.38) startVideo()
+}
+
+// Al 55% del video → aparece el panel (video sigue corriendo de fondo)
+const onVideoTimeUpdate = () => {
+  const v = introVideo.value
+  if (!v || !v.duration || phase.value !== 'intro') return
+  if (v.currentTime / v.duration >= 0.55) {
+    if (introFallbackTimer) { clearTimeout(introFallbackTimer); introFallbackTimer = null }
+    phase.value = 'panel'
+  }
+}
+
+// Fallback: si el timeupdate no llega
+const onVideoEnded = () => {
+  if (introFallbackTimer) { clearTimeout(introFallbackTimer); introFallbackTimer = null }
+  if (phase.value === 'intro') phase.value = 'panel'
+}
+
+onMounted(() => {
+  window.addEventListener('scroll', onScrollCheck, { passive: true })
+  onScrollCheck()   // por si la sección ya está en pantalla al cargar
+})
+
+const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' })
+
+/* ========================================================
+   VIEWER STATE
+   ======================================================== */
+const gsCanvas  = ref(null)
+const gsVideo   = ref(null)
+const loading   = ref(true)
+const loadLabel = ref('Cargando escena...')
+const progress  = ref(0)
+const isPanned  = ref(false)
+
+const MODE_MOUSE = 'mouse'
+const MODE_FACE  = 'face'
+let   activeMode = MODE_MOUSE
+
+/* ── Scene config (new_scene_config.json) ───────────────
+   fov_deg=54, zoom=2 → effective FOV = 27°
+   orbit_azim=-3.15°, orbit_elev=1.4°, orbit_dist=0.3
+   orbit_center: {x:0.0441, y:-0.049, z:0.0449}
+   post-rotation (x,y,z)→(x,-y,-z): TX=0.0441, TY=0.049, TZ=-0.0449
+   eye (azR=-0.05498rad, elR=0.02443rad):
+     EX = 0.0441 + 0.3*sin(-3.15°)*cos(1.4°) ≈ 0.02762
+     EY = 0.049  + 0.3*sin(1.4°)             ≈ 0.05633
+     EZ = -0.0449+ 0.3*cos(-3.15°)*cos(1.4°) ≈ 0.25450
+   ─────────────────────────────────────────────────────── */
+const FOV      = 27 * Math.PI / 180   // 54° / zoom(2)
+const POINT_SC = 1.7
+const OP_MULT  = 0.5
+const BSIGMA   = 0.65
+const BSCALE   = BSIGMA / Math.sqrt(5)   // ≈ 0.2907
+const BSCALE2  = BSCALE * BSCALE
+
+const TX0 = 0.0441,  TY0 = 0.049,   TZ0 = -0.0449   // base camera target
+const EX0 = 0.02762, EY0 = 0.05633, EZ0 =  0.25450  // base camera eye
+
+// Pan mode (replaces old parallax)
+const LERP    = 0.115
+const PAN_MAX      = 0.068   // mouse pan  (0.057 × 1.20)
+const PAN_MAX_FACE = 0.493   // webcam pan (0.176 × 2.80, +180%)
+let   panTargX = 0, panTargY = 0
+let   panCurrX = 0, panCurrY = 0
+
+// WebGL2 state
+let gl = null, program = null, vao = null, splatCount = 0, rafId = null
+let uProj, uView, uProjY, uAspect, uSizeMult, uBscale, uOpMult, uBscale2
+
+// Face tracking
+let faceStream = null, faceRafId = null
+
+/* ========================================================
+   ENTRY
+   ======================================================== */
+const startViewer = async (mode) => {
+  activeMode  = mode
+  phase.value = 'viewer'
+  await nextTick()
+  await nextTick()
+  initGL()
+  loadPLY()
+  if (mode === MODE_FACE) setupFaceTracking()
+  else setupMouse()
+}
+
+const exitViewer = () => {
+  teardown()
+  phase.value = 'panel'
+}
+
+onUnmounted(() => teardown())
+
+function teardown () {
+  cancelAnimationFrame(rafId)
+  cancelAnimationFrame(faceRafId)
+  if (faceStream) faceStream.getTracks().forEach(t => t.stop())
+  window.removeEventListener('scroll', onScrollCheck)
+  window.removeEventListener('mousemove', onMouseMove)
+  window.removeEventListener('resize', onResize)
+  if (introFallbackTimer) { clearTimeout(introFallbackTimer); introFallbackTimer = null }
+  gl = null; program = null; vao = null; splatCount = 0
+}
+
+/* ========================================================
+   CENTER VIEW (click handler)
+   ======================================================== */
+function centerView () {
+  panTargX = 0
+  panTargY = 0
+}
+
+/* ========================================================
+   PURE WebGL2 INIT
+   ======================================================== */
+function initGL () {
+  const canvas = gsCanvas.value
+  canvas.width  = canvas.clientWidth  || window.innerWidth
+  canvas.height = canvas.clientHeight || window.innerHeight
+
+  gl = canvas.getContext('webgl2', { antialias: false, premultipliedAlpha: true })
+  if (!gl) { loadLabel.value = 'ERROR: WebGL2 no soportado'; return }
+
+  window.addEventListener('resize', onResize)
+}
+
+function onResize () {
+  if (!gl || !gsCanvas.value) return
+  gsCanvas.value.width  = gsCanvas.value.clientWidth  || window.innerWidth
+  gsCanvas.value.height = gsCanvas.value.clientHeight || window.innerHeight
+  gl.viewport(0, 0, gsCanvas.value.width, gsCanvas.value.height)
+}
+
+/* ========================================================
+   SHADERS  (matches gs-demo.html exactly)
+   ======================================================== */
+const VERT = `#version 300 es
+precision highp float;
+
+in vec2  a_corner;
+in vec3  a_pos;
+in vec4  a_color;
+in float a_size;
+
+uniform mat4  u_proj;
+uniform mat4  u_view;
+uniform float u_projY;
+uniform float u_aspect;
+uniform float u_size_mult;   // POINT_SC
+uniform float u_bscale;      // bsigma / sqrt(5)
+
+out vec4 v_color;
+out vec2 v_uv;
+
+void main() {
+  vec4 vp = u_view * vec4(a_pos, 1.0);
+  if (vp.z >= -0.001) { gl_Position = vec4(0.0, 0.0, 2.0, 1.0); return; }
+  vec4 clip = u_proj * vp;
+  vec2 ndc  = clip.xy / clip.w;
+  float depth = -vp.z;
+  float ndcH = a_size * u_size_mult * u_bscale * u_projY / depth;
+  float ndcW = ndcH / u_aspect;
+  v_color = a_color;
+  v_uv    = a_corner;
+  gl_Position = vec4(ndc + a_corner * vec2(ndcW, ndcH), clip.z / clip.w, 1.0);
+}
+`
+
+const FRAG = `#version 300 es
+precision mediump float;
+
+in vec4 v_color;
+in vec2 v_uv;
+out vec4 out_color;
+
+uniform float u_op_mult;    // OP_MULT
+uniform float u_bscale2;    // (bsigma/sqrt(5))^2
+
+void main() {
+  float r2 = dot(v_uv, v_uv);
+  if (r2 > 1.0) discard;
+  float alpha = exp(-2.5 * r2 * u_bscale2) * v_color.a * u_op_mult;
+  if (alpha < 0.003) discard;
+  out_color = vec4(v_color.rgb * alpha, alpha);
+}
+`
+
+function makeShader (type, src) {
+  const s = gl.createShader(type)
+  gl.shaderSource(s, src)
+  gl.compileShader(s)
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s))
+  return s
+}
+function makeProgram (vs, fs) {
+  const p = gl.createProgram()
+  gl.attachShader(p, vs); gl.attachShader(p, fs)
+  gl.linkProgram(p)
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p))
+  return p
+}
+
+/* ========================================================
+   CAMERA MATH (pure JS)
+   ======================================================== */
+function makePerspective (fov, aspect, near, far) {
+  const f = 1 / Math.tan(fov / 2), nf = 1 / (near - far)
+  return new Float32Array([
+    f / aspect, 0,                    0,  0,
+    0,          f,                    0,  0,
+    0,          0, (far + near) * nf, -1,
+    0,          0, 2*far*near*nf,      0,
+  ])
+}
+function makeLookAt (ex, ey, ez, tx, ty, tz) {
+  const sub  = (a, b) => [a[0]-b[0], a[1]-b[1], a[2]-b[2]]
+  const dot  = (a, b) =>  a[0]*b[0]  + a[1]*b[1]  + a[2]*b[2]
+  const cross = (a, b) => [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]]
+  const norm  = a => { const l = Math.hypot(...a); return a.map(v => v/l) }
+  const eye = [ex, ey, ez], tgt = [tx, ty, tz], up = [0, 1, 0]
+  const z = norm(sub(eye, tgt))
+  const x = norm(cross(up, z))
+  const y = cross(z, x)
+  return new Float32Array([
+    x[0], y[0], z[0], 0,
+    x[1], y[1], z[1], 0,
+    x[2], y[2], z[2], 0,
+    -dot(x,eye), -dot(y,eye), -dot(z,eye), 1,
+  ])
+}
+
+/* ========================================================
+   PLY LOADER  (raw — POINT_SC / OP_MULT / bscale live as uniforms)
+   ======================================================== */
+async function loadPLY () {
+  loading.value  = true
+  loadLabel.value = 'Descargando escena...'
+  progress.value  = 0
+
+  const url  = 'https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/3D/Guassian/Table.ply'
+  const resp = await fetch(url)
+  if (!resp.ok) { loadLabel.value = 'Error ' + resp.status; return }
+
+  const total  = parseInt(resp.headers.get('Content-Length') || '0')
+  const reader = resp.body.getReader()
+  const chunks = []; let received = 0
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    chunks.push(value); received += value.length
+    if (total) progress.value = Math.round(received / total * 40)
+  }
+
+  loadLabel.value = 'Procesando...'; progress.value = 45
+  await new Promise(r => setTimeout(r, 0))
+
+  const ab  = new ArrayBuffer(received)
+  const arr = new Uint8Array(ab)
+  let off = 0
+  for (const c of chunks) { arr.set(c, off); off += c.length }
+
+  const peek    = new TextDecoder('ascii').decode(arr.slice(0, Math.min(arr.length, 8192)))
+  const endMark = peek.indexOf('end_header')
+  if (endMark === -1) { loadLabel.value = 'Error: header PLY'; return }
+  let hdrBytes = endMark + 10
+  if (arr[hdrBytes] === 13) hdrBytes++
+  if (arr[hdrBytes] === 10) hdrBytes++
+
+  const nm = peek.match(/element vertex (\d+)/)
+  if (!nm) { loadLabel.value = 'Error: PLY inválido'; return }
+  const N = parseInt(nm[1])
+
+  const STRIDE = 14
+  const SH_C0  = 0.28209479
+
+  const binaryLen = N * STRIDE * 4
+  const aligned   = new ArrayBuffer(binaryLen)
+  new Uint8Array(aligned).set(new Uint8Array(ab, hdrBytes, binaryLen))
+  const data = new Float32Array(aligned)
+
+  progress.value = 55
+
+  // Decode — scene rotation (x,y,z) → (x,-y,-z)
+  // Raw: no POINT_SC or OP_MULT baked in → they live as shader uniforms
+  const posArr = new Float32Array(N * 3)
+  const colArr = new Float32Array(N * 4)
+  const szArr  = new Float32Array(N)
+  for (let i = 0; i < N; i++) {
+    const b = i * STRIDE
+    posArr[i*3]   =  data[b]
+    posArr[i*3+1] = -data[b+1]
+    posArr[i*3+2] = -data[b+2]
+    colArr[i*4]   = Math.min(1, Math.max(0, SH_C0 * data[b+3] + 0.5))
+    colArr[i*4+1] = Math.min(1, Math.max(0, SH_C0 * data[b+4] + 0.5))
+    colArr[i*4+2] = Math.min(1, Math.max(0, SH_C0 * data[b+5] + 0.5))
+    colArr[i*4+3] = Math.min(1, 1 / (1 + Math.exp(-data[b+6])))  // raw sigmoid, no OP_MULT
+    const s0 = Math.exp(data[b+7]), s1 = Math.exp(data[b+8]), s2 = Math.exp(data[b+9])
+    szArr[i] = Math.max(s0, s1, s2) * 2.0   // 2σ radius — no POINT_SC baked
+  }
+
+  progress.value = 68; loadLabel.value = 'Ordenando...'
+  await new Promise(r => setTimeout(r, 0))
+
+  // Back-to-front sort using base camera view matrix
+  const viewMat = makeLookAt(EX0, EY0, EZ0, TX0, TY0, TZ0)
+  const dep = new Float32Array(N)
+  for (let i = 0; i < N; i++) {
+    const x = posArr[i*3], y = posArr[i*3+1], z = posArr[i*3+2]
+    dep[i] = viewMat[2]*x + viewMat[6]*y + viewMat[10]*z + viewMat[14]
+  }
+  const idx = new Uint32Array(N)
+  for (let i = 0; i < N; i++) idx[i] = i
+  idx.sort((a, b) => dep[a] - dep[b])
+
+  progress.value = 84; loadLabel.value = 'Preparando GPU...'
+  await new Promise(r => setTimeout(r, 0))
+
+  const sPos = new Float32Array(N * 3)
+  const sCol = new Float32Array(N * 4)
+  const sSz  = new Float32Array(N)
+  for (let j = 0; j < N; j++) {
+    const i = idx[j]
+    sPos[j*3]   = posArr[i*3];   sPos[j*3+1] = posArr[i*3+1]; sPos[j*3+2] = posArr[i*3+2]
+    sCol[j*4]   = colArr[i*4];   sCol[j*4+1] = colArr[i*4+1]
+    sCol[j*4+2] = colArr[i*4+2]; sCol[j*4+3] = colArr[i*4+3]
+    sSz[j] = szArr[i]
+  }
+
+  if (!gl) return   // viewer was closed during load
+  buildVAO(sPos, sCol, sSz)
+  splatCount = N
+
+  progress.value = 100
+  loading.value  = false
+  startRender()
+}
+
+/* ========================================================
+   BUILD VAO + BUFFERS
+   ======================================================== */
+function buildVAO (pos, col, sz) {
+  program = makeProgram(makeShader(gl.VERTEX_SHADER, VERT), makeShader(gl.FRAGMENT_SHADER, FRAG))
+
+  uProj     = gl.getUniformLocation(program, 'u_proj')
+  uView     = gl.getUniformLocation(program, 'u_view')
+  uProjY    = gl.getUniformLocation(program, 'u_projY')
+  uAspect   = gl.getUniformLocation(program, 'u_aspect')
+  uSizeMult = gl.getUniformLocation(program, 'u_size_mult')
+  uBscale   = gl.getUniformLocation(program, 'u_bscale')
+  uOpMult   = gl.getUniformLocation(program, 'u_op_mult')
+  uBscale2  = gl.getUniformLocation(program, 'u_bscale2')
+
+  const aCorner = gl.getAttribLocation(program, 'a_corner')
+  const aPos    = gl.getAttribLocation(program, 'a_pos')
+  const aColor  = gl.getAttribLocation(program, 'a_color')
+  const aSize   = gl.getAttribLocation(program, 'a_size')
+
+  vao = gl.createVertexArray()
+  gl.bindVertexArray(vao)
+
+  const corners = new Float32Array([-1,-1, 1,-1, 1,1, -1,-1, 1,1, -1,1])
+
+  function addBuf (data, loc, size, divisor) {
+    const buf = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf)
+    gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW)
+    gl.enableVertexAttribArray(loc)
+    gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 0, 0)
+    gl.vertexAttribDivisor(loc, divisor)
+  }
+
+  addBuf(corners, aCorner, 2, 0)  // per-vertex
+  addBuf(pos,     aPos,    3, 1)  // per-instance
+  addBuf(col,     aColor,  4, 1)  // per-instance
+  addBuf(sz,      aSize,   1, 1)  // per-instance
+
+  gl.bindVertexArray(null)
+}
+
+/* ========================================================
+   RENDER LOOP
+   ======================================================== */
+function startRender () {
+  const projY = 1 / Math.tan(FOV / 2)
+
+  const loop = () => {
+    rafId = requestAnimationFrame(loop)
+    if (!gl || !vao || splatCount === 0) return
+
+    const canvas = gsCanvas.value
+    const W = canvas.width, H = canvas.height
+
+    gl.viewport(0, 0, W, H)
+    gl.clearColor(0.02, 0.039, 0.059, 1)
+    gl.clear(gl.COLOR_BUFFER_BIT)
+
+    gl.enable(gl.BLEND)
+    gl.blendEquation(gl.FUNC_ADD)
+    gl.blendFuncSeparate(gl.ONE, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
+    gl.disable(gl.DEPTH_TEST)
+
+    // Smooth pan lerp
+    panCurrX += (panTargX - panCurrX) * LERP
+    panCurrY += (panTargY - panCurrY) * LERP
+
+    // Show hint when panned away from center
+    isPanned.value = Math.abs(panCurrX) + Math.abs(panCurrY) > 0.001
+
+    const aspect  = W / H
+    const projMat = makePerspective(FOV, aspect, 0.001, 50)
+
+    // Pan: eye and target shift together (keeps look direction stable)
+    const viewMat = makeLookAt(
+      EX0 + panCurrX, EY0 + panCurrY, EZ0,
+      TX0 + panCurrX, TY0 + panCurrY, TZ0
+    )
+
+    gl.useProgram(program)
+    gl.uniformMatrix4fv(uProj,     false, projMat)
+    gl.uniformMatrix4fv(uView,     false, viewMat)
+    gl.uniform1f(uProjY,    projY)
+    gl.uniform1f(uAspect,   aspect)
+    gl.uniform1f(uSizeMult, POINT_SC)
+    gl.uniform1f(uBscale,   BSCALE)
+    gl.uniform1f(uOpMult,   OP_MULT)
+    gl.uniform1f(uBscale2,  BSCALE2)
+
+    gl.bindVertexArray(vao)
+    gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, splatCount)
+    gl.bindVertexArray(null)
+  }
+  loop()
+}
+
+/* ========================================================
+   MOUSE MODE — pan (mouse position = world-space shift)
+   ======================================================== */
+function setupMouse () {
+  window.addEventListener('mousemove', onMouseMove)
+}
+
+function onMouseMove (e) {
+  const normX = (e.clientX / window.innerWidth)  * 2 - 1   // [-1, 1]
+  const normY = (e.clientY / window.innerHeight) * 2 - 1   // [-1, 1]
+  // Clamp pan to PAN_MAX so scene stays in frame
+  panTargX = Math.max(-PAN_MAX, Math.min(PAN_MAX, -normX * PAN_MAX))
+  panTargY = Math.max(-PAN_MAX, Math.min(PAN_MAX,  normY * PAN_MAX * 0.5))
+}
+
+/* ========================================================
+   FACE TRACKING MODE (TF.js + BlazeFace)
+   ======================================================== */
+async function setupFaceTracking () {
+  try {
+    faceStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+    const video = gsVideo.value
+    if (!video) return
+    video.srcObject = faceStream
+    await video.play()
+
+    await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.18.0/dist/tf.min.js')
+    await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface@0.0.7/dist/blazeface.min.js')
+    const model = await window.blazeface.load()
+
+    const detectLoop = async () => {
+      if (phase.value !== 'viewer') return
+      const preds = await model.estimateFaces(video, false)
+      if (preds.length > 0) {
+        const [[x1], [x2]] = [preds[0].topLeft, preds[0].bottomRight]
+        const faceX = (x1 + x2) * 0.5
+        const normX = faceX / (video.videoWidth || 640)
+        // Face right → pan right
+        panTargX = Math.max(-PAN_MAX_FACE, Math.min(PAN_MAX_FACE, (normX * 2 - 1) * PAN_MAX_FACE))
+      }
+      faceRafId = requestAnimationFrame(detectLoop)
+    }
+    detectLoop()
+  } catch (e) {
+    console.warn('Face tracking unavailable:', e)
+    setupMouse()
+  }
+}
+
+function loadScript (src) {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector('script[src="' + src + '"]')) { resolve(); return }
+    const s = document.createElement('script')
+    s.src = src; s.onload = resolve; s.onerror = reject
+    document.head.appendChild(s)
+  })
+}
+</script>
+
+<style scoped>
+.gs-section {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  background: var(--color-black);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* ── Discovery overlay ── */
+.gs-discovery {
+  position: absolute; inset: 0; z-index: 50;
+  background: rgba(0,0,0,0.72);
+  pointer-events: none;
+  transition: opacity 0.15s linear;
+}
+
+/* ── Transitions ── */
+.gsfade-enter-active, .gsfade-leave-active { transition: opacity 0.9s ease; }
+.gsfade-enter-from, .gsfade-leave-to       { opacity: 0; }
+
+/* ── VIDEO DE INTRODUCCIÓN ────────────────────────────────
+   Siempre en DOM. Tres estados según la fase.
+   ──────────────────────────────────────────────────────── */
+.gs-intro-video {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Fase intro: encima de todo, reproduce */
+.gs-intro-video.phase-intro {
+  z-index: 8;
+  pointer-events: none;
+}
+
+/* Fase panel: último frame visible como fondo/marco detrás del panel de selección */
+.gs-intro-video.phase-panel {
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* Fase viewer: último frame congelado ENCIMA del canvas pero DEBAJO
+   de los controles (.gs-back z-10, .gs-home z-10, .gs-center-hint z-10).
+   pointer-events: none → los clics siguen llegando al canvas */
+.gs-intro-video.phase-viewer {
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* ── PANEL ── */
+.gs-panel {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 48px;
+  background: var(--color-black);
+}
+.gs-eyebrow {
+  font-family: var(--font-jp);
+  font-size: 10px; font-weight: 200;
+  letter-spacing: 0.5em; text-transform: uppercase;
+  color: var(--color-accent); opacity: 1;
+}
+.gs-panel-title {
+  font-family: var(--font-serif);
+  font-size: clamp(1.6rem, 3vw, 2.6rem);
+  font-weight: 300;
+  letter-spacing: 0.08em;
+  color: var(--color-white);
+  text-align: center;
+}
+.gs-options {
+  display: flex; gap: 30px; align-items: flex-start;
+}
+
+/* Tarjeta de opción — replicada del archivo de referencia */
+.gs-opt {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 20px;
+  width: 200px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 16px;
+  padding: 30px 40px;
+  cursor: pointer;
+  transition: background 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
+}
+.gs-opt:hover {
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.30);
+  transform: translateY(-5px);
+}
+
+.gs-icon-wrap {
+  width: 60px; height: 60px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--color-accent);
+}
+
+/* ── Animación circular compartida ── */
+@keyframes circularFloat {
+  0%    { transform: translate(0px,   -5px); }
+  12.5% { transform: translate(3.5px, -3.5px); }
+  25%   { transform: translate(5px,   0px); }
+  37.5% { transform: translate(3.5px,  3.5px); }
+  50%   { transform: translate(0px,    5px); }
+  62.5% { transform: translate(-3.5px, 3.5px); }
+  75%   { transform: translate(-5px,   0px); }
+  87.5% { transform: translate(-3.5px,-3.5px); }
+  100%  { transform: translate(0px,   -5px); }
+}
+
+/* ── Mouse: movimiento circular ── */
+.icon-mouse {
+  animation: circularFloat 3s ease-in-out infinite;
+}
+
+/* ── Persona: el ícono completo se mueve en círculo ── */
+.icon-head, .icon-body {
+  animation: none;
+}
+.gs-opt:nth-child(2) .gs-icon-wrap svg {
+  animation: circularFloat 3.5s ease-in-out infinite;
+}
+
+.gs-opt-label {
+  font-family: var(--font-serif);
+  font-size: 11px; font-weight: 300;
+  letter-spacing: 0.38em; text-transform: uppercase;
+  color: rgba(200,225,240,1.00);
+  transition: color 0.3s ease;
+}
+.gs-opt:hover .gs-opt-label { color: var(--color-accent); }
+
+/* ── VIEWER ── */
+/* ── VIEWER ── */
+.gs-viewer {
+  position: absolute; inset: 0;
+}
+.gs-canvas {
+  width: 100%; height: 100%;
+  display: block;
+}
+.gs-back {
+  position: absolute; top: 28px; left: 32px; z-index: 10;
+  background: none;
+  border: 1px solid rgba(122,180,212,0.22);
+  color: rgba(200,225,240,0.65);
+  width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all 0.3s;
+}
+.gs-back:hover { border-color: var(--color-accent); color: var(--color-accent); }
+.gs-back svg   { width: 18px; height: 18px; }
+
+.gs-home {
+  position: absolute; bottom: 36px; left: 50%; transform: translateX(-50%);
+  background: none;
+  border: 1px solid rgba(122,180,212,0.22);
+  color: rgba(200,225,240,0.55);
+  padding: 10px 28px;
+  font-family: var(--font-serif); font-size: 10px;
+  letter-spacing: 0.38em; text-transform: uppercase;
+  cursor: pointer; transition: all 0.3s; z-index: 10;
+}
+.gs-home:hover { border-color: var(--color-accent); color: var(--color-accent); }
+
+.gs-video { position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px; }
+
+.gs-center-hint {
+  position: absolute; bottom: 82px; left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-serif); font-style: italic;
+  font-size: 10px; letter-spacing: 0.36em;
+  color: rgba(200,225,240,0.4);
+  pointer-events: none; z-index: 10;
+  animation: fadeHint 0.5s ease both;
+}
+@keyframes fadeHint {
+  from { opacity: 0; transform: translateX(-50%) translateY(6px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.gs-loading {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 20px;
+  background: var(--color-black);
+  z-index: 5;
+}
+.gs-loading-txt {
+  font-family: var(--font-serif); font-size: 10px;
+  letter-spacing: 0.4em; text-transform: uppercase;
+  color: rgba(200,225,240,0.4);
+}
+.gs-bar-wrap {
+  width: 220px; height: 1px;
+  background: rgba(122,180,212,0.15);
+}
+.gs-bar {
+  height: 100%;
+  background: var(--color-accent);
+  transition: width 0.3s ease;
+}
+</style>
+         

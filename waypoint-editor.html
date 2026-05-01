@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hotel Lain · Editor de Waypoints</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/Observer.min.js"></script>
+  <style>
+    /* ── Reset & tokens ─────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:      #090d14;
+      --sidebar: rgba(6, 16, 36, 0.90);
+      --accent:  #7ab4d4;
+      --accent2: #d4a07a;
+      --text:    rgba(200, 225, 240, 0.80);
+      --muted:   rgba(122, 180, 212, 0.38);
+      --border:  rgba(122, 180, 212, 0.14);
+      --font:    'Georgia', 'Times New Roman', serif;
+      --mono:    'Consolas', 'Courier New', monospace;
+    }
+    body, html {
+      height: 100%; width: 100%;
+      background: var(--bg); color: var(--text);
+      font-family: var(--font); overflow: hidden;
+    }
+
+    /* ── EDITOR VIEW ─────────────────────────────────────── */
+    #editor-view { position: relative; height: 100%; width: 100%; }
+
+    /* Sidebar */
+    #sidebar {
+      position: absolute; top: 0; left: 0; bottom: 0; width: 284px;
+      background: var(--sidebar); border-right: 1px solid var(--border);
+      backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+      display: flex; flex-direction: column; z-index: 100;
+    }
+    .sidebar-header {
+      padding: 20px 18px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    .sidebar-header .eyebrow {
+      font-size: 9px; letter-spacing: 0.5em; text-transform: uppercase;
+      color: var(--muted); display: block; margin-bottom: 5px;
+    }
+    .sidebar-header h1 {
+      font-size: 0.95rem; font-weight: 300; letter-spacing: 0.18em; color: var(--accent);
+    }
+
+    /* Controls */
+    .controls {
+      padding: 12px 12px 10px; display: flex; flex-direction: column;
+      gap: 6px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    .btn {
+      background: rgba(122,180,212,0.05); color: var(--text);
+      border: 1px solid var(--border); padding: 8px 12px; cursor: pointer;
+      font-family: var(--font); font-size: 10px; letter-spacing: 0.22em;
+      text-transform: uppercase;
+      display: flex; align-items: center; justify-content: center; gap: 7px;
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+    }
+    .btn:hover { background: rgba(122,180,212,0.13); border-color: rgba(122,180,212,0.35); color: #fff; }
+    .btn.accent  { border-color: rgba(122,180,212,0.35); color: var(--accent); }
+    .btn.accent:hover  { background: rgba(122,180,212,0.18); }
+    .btn.success { border-color: rgba(100,200,130,0.35); color: #7ad4a0; }
+    .btn.success:hover { background: rgba(100,200,130,0.10); }
+
+    /* Mode toggle */
+    .mode-row { display: flex; gap: 5px; }
+    .mode-btn {
+      flex: 1; background: rgba(255,255,255,0.03); color: rgba(200,225,240,0.40);
+      border: 1px solid var(--border); padding: 7px 6px; cursor: pointer;
+      font-family: var(--font); font-size: 9px; letter-spacing: 0.22em;
+      text-transform: uppercase; display: flex; align-items: center; justify-content: center; gap: 5px;
+      transition: all 0.18s;
+    }
+    .mode-btn:hover { color: var(--text); background: rgba(122,180,212,0.08); }
+    .mode-btn.active {
+      background: rgba(122,180,212,0.15); border-color: rgba(122,180,212,0.50);
+      color: var(--accent);
+    }
+
+    /* Outliner */
+    #outliner {
+      flex: 1; overflow-y: auto; padding: 8px 8px 4px;
+      display: flex; flex-direction: column; gap: 3px; min-height: 0;
+    }
+    #outliner::-webkit-scrollbar { width: 3px; }
+    #outliner::-webkit-scrollbar-thumb { background: var(--border); }
+
+    .outliner-section-label {
+      font-size: 9px; letter-spacing: 0.45em; text-transform: uppercase;
+      color: var(--muted); padding: 6px 4px 5px; display: block; flex-shrink: 0;
+    }
+    .outliner-sep {
+      height: 1px; background: var(--border); margin: 4px 0; flex-shrink: 0;
+    }
+    .outliner-item {
+      background: rgba(255,255,255,0.025); padding: 7px 9px;
+      border: 1px solid transparent; display: flex; align-items: center; gap: 8px;
+      cursor: pointer; flex-shrink: 0; transition: border-color 0.15s, background 0.15s;
+    }
+    .outliner-item:hover { background: rgba(122,180,212,0.06); border-color: var(--border); }
+    .outliner-item.selected { border-color: rgba(122,180,212,0.45); background: rgba(122,180,212,0.10); }
+    .outliner-item span.name { font-size: 11px; letter-spacing: 0.08em; flex: 1; pointer-events: none; }
+    .outliner-num {
+      width: 18px; height: 18px; border-radius: 50%;
+      background: rgba(122,180,212,0.12); border: 1px solid rgba(122,180,212,0.30);
+      font-size: 9px; display: flex; align-items: center; justify-content: center;
+      color: var(--accent); flex-shrink: 0; pointer-events: none; font-family: var(--mono);
+    }
+    .outliner-item.selected .outliner-num { background: var(--accent); color: #090d14; border-color: var(--accent); }
+    .outliner-rect-icon {
+      width: 18px; height: 14px;
+      border: 1px solid rgba(122,180,212,0.40); background: rgba(122,180,212,0.08);
+      flex-shrink: 0; pointer-events: none;
+    }
+    .outliner-item.selected .outliner-rect-icon { background: rgba(122,180,212,0.18); border-color: var(--accent); }
+    .btn-del {
+      background: none; color: rgba(200,225,240,0.22); border: none;
+      font-size: 1rem; padding: 0 2px; cursor: pointer; line-height: 1; flex-shrink: 0;
+      transition: color 0.15s;
+    }
+    .btn-del:hover { color: rgba(200,225,240,0.85); background: none; }
+
+    /* Properties panel */
+    #properties-panel {
+      border-top: 1px solid var(--border); padding: 11px 13px 13px;
+      flex-shrink: 0; max-height: 260px; overflow-y: auto;
+    }
+    #properties-panel::-webkit-scrollbar { width: 3px; }
+    #properties-panel::-webkit-scrollbar-thumb { background: var(--border); }
+    .prop-label {
+      font-size: 9px; letter-spacing: 0.42em; text-transform: uppercase;
+      color: var(--muted); display: block; margin-bottom: 5px;
+    }
+    .prop-label + * { margin-top: 0; }
+
+    /* Waypoint coords */
+    #wp-props .mono-coords {
+      font-family: var(--mono); font-size: 10px; color: var(--muted); line-height: 1.9;
+    }
+    #wp-props .mono-coords b { color: var(--accent); font-weight: 400; }
+
+    /* Rect text editor */
+    #rect-props { display: none; }
+    #rect-text-editor {
+      width: 100%; min-height: 58px; max-height: 110px;
+      background: rgba(0,0,0,0.38); border: 1px solid var(--border);
+      color: var(--text); font-family: var(--font); font-size: 12px;
+      padding: 7px 9px; outline: none; line-height: 1.5;
+      overflow-y: auto; cursor: text; transition: border-color 0.18s;
+      white-space: pre-wrap; word-break: break-word;
+    }
+    #rect-text-editor:focus { border-color: rgba(122,180,212,0.40); }
+    #rect-text-editor:empty:before {
+      content: attr(data-placeholder); color: rgba(200,225,240,0.22);
+      pointer-events: none;
+    }
+    /* Alignment buttons */
+    .align-btn {
+      width: 26px; height: 26px; padding: 0; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+      color: rgba(200,225,240,0.45); cursor: pointer; transition: all 0.15s;
+    }
+    .align-btn:hover { background: rgba(122,180,212,0.10); color: var(--text); }
+    .align-btn.on { background: rgba(122,180,212,0.18); border-color: rgba(122,180,212,0.50); color: var(--accent); }
+    .text-format-row {
+      display: flex; gap: 4px; margin-top: 6px; align-items: center;
+    }
+    .fmt-btn {
+      width: 26px; height: 26px; padding: 0; font-size: 12px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+      color: rgba(200,225,240,0.55); cursor: pointer; transition: all 0.15s;
+    }
+    .fmt-btn:hover { background: rgba(122,180,212,0.10); color: var(--text); }
+    .fmt-btn.on { background: rgba(122,180,212,0.18); border-color: rgba(122,180,212,0.50); color: var(--accent); }
+    .font-select, .wp-link-select {
+      flex: 1; min-width: 0;
+      background: rgba(0,0,0,0.38); border: 1px solid var(--border);
+      color: var(--text); font-size: 10px; padding: 4px 6px;
+      outline: none; transition: border-color 0.18s;
+    }
+    .font-select:focus, .wp-link-select:focus { border-color: rgba(122,180,212,0.40); }
+    .color-swatch {
+      width: 26px; height: 26px; padding: 2px; cursor: pointer; flex-shrink: 0;
+      background: rgba(0,0,0,0.30); border: 1px solid var(--border); transition: border-color 0.15s;
+    }
+    .color-swatch:hover { border-color: rgba(122,180,212,0.45); }
+    .prop-row { display: flex; align-items: center; gap: 5px; margin-top: 8px; }
+    .prop-row .prop-label { margin: 0; flex-shrink: 0; }
+
+    /* ── Canvas area ─────────────────────────────────────── */
+    #canvas-area {
+      position: absolute; top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      overflow: auto;
+      background: radial-gradient(rgba(122,180,212,0.055) 1px, transparent 1px);
+      background-size: 28px 28px; z-index: 10;
+    }
+    #canvas-area.mode-rect { cursor: crosshair; }
+    #canvas-area.mode-wp   { cursor: default; }
+    #image-container { position: relative; width: 100%; height: auto; display: block; }
+    #target-img { width: 100%; height: auto; display: block; user-select: none; pointer-events: none; }
+    .empty-state {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: 100vh; gap: 12px; pointer-events: none; padding-left: 284px;
+    }
+    .empty-icon { font-size: 1.8rem; opacity: 0.14; }
+    .empty-text {
+      font-size: 10px; letter-spacing: 0.35em; text-transform: uppercase;
+      color: var(--muted); text-align: center; line-height: 1.9;
+    }
+
+    /* Waypoint dots */
+    .waypoint {
+      width: 22px; height: 22px; background: var(--accent);
+      border: 2px solid rgba(255,255,255,0.80); border-radius: 50%;
+      position: absolute; transform: translate(-50%, -50%); cursor: move; z-index: 50;
+      box-shadow: 0 0 10px rgba(122,180,212,0.40); transition: transform 0.1s, box-shadow 0.1s;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 8px; font-family: var(--mono); color: #090d14; font-weight: bold;
+    }
+    .waypoint.selected {
+      transform: translate(-50%, -50%) scale(1.32);
+      box-shadow: 0 0 18px rgba(122,180,212,0.75); background: #c0dcea;
+    }
+
+    /* Rectangle items */
+    .rect-item {
+      position: absolute; border: 1px solid rgba(122,180,212,0.50);
+      background: rgba(6,16,36,0.38); cursor: move; z-index: 40;
+      display: flex; align-items: center; justify-content: center; overflow: hidden;
+      backdrop-filter: blur(2px);
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .rect-item:hover { border-color: rgba(122,180,212,0.75); }
+    .rect-item.selected {
+      border-color: var(--accent); border-width: 2px;
+      box-shadow: 0 0 0 1px rgba(122,180,212,0.25), inset 0 0 18px rgba(122,180,212,0.06);
+    }
+    .rect-text-display {
+      pointer-events: none; text-align: center;
+      padding: 8px 10px; word-break: break-word; line-height: 1.35;
+      width: 100%;
+    }
+    .rect-resize-handle {
+      position: absolute; bottom: 0; right: 0;
+      width: 12px; height: 12px; cursor: se-resize;
+      background: linear-gradient(135deg, transparent 50%, rgba(122,180,212,0.65) 50%);
+      z-index: 51;
+    }
+    .rect-resize-handle:hover { background: linear-gradient(135deg, transparent 50%, var(--accent) 50%); }
+
+    /* Opacity slider inline */
+    .opacity-row {
+      display: flex; align-items: center; gap: 5px; margin-top: 4px;
+    }
+    .opacity-row input[type=range] {
+      flex: 1; accent-color: var(--accent); height: 3px; cursor: pointer;
+    }
+    .opacity-val {
+      font-family: var(--mono); font-size: 9px; color: var(--accent);
+      width: 28px; text-align: right; flex-shrink: 0;
+    }
+    .section-divider {
+      height: 1px; background: var(--border); margin: 10px 0 8px;
+    }
+
+    /* Drawing ghost */
+    .rect-drawing {
+      position: absolute; border: 1px dashed var(--accent);
+      background: rgba(122,180,212,0.06); pointer-events: none; z-index: 45;
+    }
+
+    /* Hint bar */
+    .hint-bar {
+      position: fixed; bottom: 12px; right: 12px;
+      background: rgba(6,16,36,0.80); border: 1px solid var(--border);
+      backdrop-filter: blur(8px); padding: 6px 14px;
+      font-size: 9px; letter-spacing: 0.3em; text-transform: uppercase;
+      color: var(--muted); pointer-events: none; z-index: 150;
+    }
+
+    /* ── PREVIEW VIEW ────────────────────────────────────── */
+    #preview-view {
+      display: none; position: fixed; top: 0; left: 0;
+      width: 100vw; height: 100vh; background: #07090f; z-index: 500; overflow: hidden;
+    }
+    .preview-back {
+      position: absolute; top: 22px; left: 24px; z-index: 600;
+      padding: 8px 18px; background: rgba(6,16,36,0.82); border: 1px solid var(--border);
+      backdrop-filter: blur(10px); color: var(--text); font-family: var(--font);
+      font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase; cursor: pointer;
+      display: flex; align-items: center; gap: 7px; transition: border-color 0.2s, color 0.2s;
+    }
+    .preview-back:hover { border-color: var(--accent); color: var(--accent); }
+    #preview-viewport { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
+    #preview-img-wrapper {
+      position: absolute; top: 0; left: 0; transform-origin: top left;
+      will-change: transform; width: 100vw;
+    }
+    #preview-img-wrapper img { width: 100%; height: auto; display: block; }
+    .preview-waypoint {
+      width: 42px; height: 42px; background: rgba(122,180,212,0.18);
+      border: 2px solid var(--accent); border-radius: 50%; position: absolute;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 16px rgba(122,180,212,0.30);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-family: var(--mono); color: var(--accent); pointer-events: none;
+    }
+    /* Preview rect overlay */
+    .preview-rect {
+      position: absolute; display: flex; align-items: center; justify-content: center;
+      pointer-events: none; overflow: hidden; opacity: 0;
+    }
+    .preview-rect-text {
+      text-align: center; padding: 10px 14px;
+      line-height: 1.4; word-break: break-word; width: 100%;
+    }
+    /* Nav */
+    .preview-nav {
+      position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%);
+      display: flex; flex-direction: column; align-items: center; gap: 9px; z-index: 600;
+    }
+    .nav-hint { font-size: 9px; letter-spacing: 0.45em; text-transform: uppercase; color: rgba(122,180,212,0.30); }
+    .nav-dots { display: flex; gap: 8px; align-items: center; }
+    .nav-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: rgba(122,180,212,0.18); border: 1px solid rgba(122,180,212,0.28);
+      transition: all 0.3s;
+    }
+    .nav-dot.active { background: var(--accent); border-color: var(--accent); transform: scale(1.45); }
+    .nav-label { font-size: 9px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--muted); }
+
+    /* ── EXPORT MODAL ────────────────────────────────────── */
+    #export-modal {
+      display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      background: rgba(6, 16, 36, 0.97); border: 1px solid var(--border);
+      backdrop-filter: blur(20px); padding: 22px; width: 500px; z-index: 1000;
+    }
+    .modal-title {
+      font-size: 9px; letter-spacing: 0.45em; text-transform: uppercase;
+      color: var(--accent); margin-bottom: 12px;
+    }
+    #export-text {
+      width: 100%; height: 200px; background: rgba(0,0,0,0.50);
+      border: 1px solid var(--border); color: #7ad4a0; font-family: var(--mono);
+      font-size: 10px; padding: 10px; resize: none; outline: none; line-height: 1.6;
+    }
+    .modal-foot { display: flex; gap: 7px; margin-top: 10px; }
+    .modal-foot .btn { flex: 1; }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════
+     VISTA EDITOR
+     ══════════════════════════════════════════════ -->
+<div id="editor-view">
+
+  <div id="sidebar">
+    <div class="sidebar-header">
+      <span class="eyebrow">Hotel Lain</span>
+      <h1>Editor de Waypoints</h1>
+    </div>
+
+    <div class="controls">
+      <!-- Cargar imagen -->
+      <button class="btn" onclick="document.getElementById('file-input').click()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+        Cargar plano
+      </button>
+      <input type="file" id="file-input" hidden accept="image/*">
+
+      <!-- Modo -->
+      <div class="mode-row">
+        <button class="mode-btn active" id="mode-wp" onclick="setMode('waypoint')">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/></svg>
+          Waypoint
+        </button>
+        <button class="mode-btn" id="mode-rect" onclick="setMode('rect')">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="0"/></svg>
+          Rectángulo
+        </button>
+      </div>
+
+      <!-- Acciones -->
+      <button class="btn success" id="btn-preview">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Previsualizar
+      </button>
+      <button class="btn accent" id="btn-export">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        Exportar config
+      </button>
+    </div>
+
+    <!-- Outliner -->
+    <div id="outliner"></div>
+
+    <!-- Panel de propiedades -->
+    <div id="properties-panel">
+      <!-- Waypoint props -->
+      <div id="wp-props">
+        <span class="prop-label">Posición</span>
+        <div class="mono-coords" id="wp-coords"><span style="opacity:0.35">— Selecciona un punto —</span></div>
+      </div>
+
+      <!-- Rect props -->
+      <div id="rect-props">
+        <span class="prop-label">Texto <span style="color:rgba(122,180,212,0.38);font-size:8px;letter-spacing:0.1em;text-transform:none">(selecciona para aplicar solo a esa parte)</span></span>
+        <div id="rect-text-editor" contenteditable="true" data-placeholder="Escribe aquí…" oninput="syncRectHtml()" spellcheck="false"></div>
+
+        <!-- Fuente + B + I + Color -->
+        <div class="text-format-row" style="margin-top:6px">
+          <select class="font-select" id="rect-font" onmousedown="event.preventDefault()" onchange="applyFont(this.value)">
+            <option value="Georgia, serif">Georgia · Serif</option>
+            <option value="'Times New Roman', serif">Times New Roman</option>
+            <option value="Arial, sans-serif">Arial · Sans</option>
+            <option value="'Segoe UI', sans-serif">Segoe UI</option>
+            <option value="'Consolas', monospace">Consolas · Mono</option>
+          </select>
+          <button class="fmt-btn" id="btn-bold"   onmousedown="event.preventDefault()" onclick="applyBold()"   title="Negrita · aplica a selección o a todo">B</button>
+          <button class="fmt-btn" id="btn-italic" onmousedown="event.preventDefault()" onclick="applyItalic()" title="Cursiva · aplica a selección o a todo" style="font-style:italic">I</button>
+          <input  type="color" class="color-swatch" id="rect-color" value="#c8e0f0" oninput="applyColor(this.value)" title="Color del texto">
+        </div>
+
+        <!-- Tamaño -->
+        <div class="opacity-row" style="margin-top:6px">
+          <span style="font-size:9px;color:var(--muted);flex-shrink:0;letter-spacing:0.2em">Tamaño</span>
+          <input type="range" id="rect-font-size" min="8" max="72" value="13" oninput="applyFontSize(this.value)">
+          <span class="opacity-val" id="rect-font-size-val">13px</span>
+          <input type="number" id="rect-font-size-num" min="8" max="200" value="13"
+            oninput="applyFontSize(this.value)"
+            style="width:38px;background:rgba(0,0,0,0.35);border:1px solid var(--border);color:var(--accent);font-family:var(--mono);font-size:10px;padding:2px 4px;outline:none;text-align:center">
+        </div>
+
+        <!-- Alineación + Espaciado -->
+        <div class="text-format-row" style="margin-top:6px">
+          <span style="font-size:9px;color:var(--muted);flex-shrink:0;letter-spacing:0.2em;margin-right:2px">Alinear</span>
+          <button class="align-btn on" id="align-left"   onmousedown="event.preventDefault()" onclick="applyAlign('left')"   title="Izquierda">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="18" y2="18"/></svg>
+          </button>
+          <button class="align-btn" id="align-center" onmousedown="event.preventDefault()" onclick="applyAlign('center')" title="Centro">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="5" y1="18" x2="19" y2="18"/></svg>
+          </button>
+          <button class="align-btn" id="align-right"  onmousedown="event.preventDefault()" onclick="applyAlign('right')"  title="Derecha">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="9" y1="12" x2="21" y2="12"/><line x1="6" y1="18" x2="21" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="opacity-row" style="margin-top:5px">
+          <span style="font-size:9px;color:var(--muted);flex-shrink:0;letter-spacing:0.2em">Interlineado</span>
+          <input type="range" id="rect-line-height" min="10" max="30" value="14" oninput="applyLineHeight(this.value)" style="flex:1;accent-color:var(--accent);height:3px">
+          <span class="opacity-val" id="rect-lh-val">1.4</span>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <!-- Fondo -->
+        <div class="text-format-row">
+          <button class="fmt-btn on" id="btn-bg-on" onclick="toggleRectStyle('bgOn')" title="Activar / desactivar fondo">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="2" width="20" height="20" rx="2"/></svg>
+          </button>
+          <span class="prop-label" style="margin:0;flex-shrink:0">Fondo</span>
+          <input type="color" class="color-swatch" id="rect-bg-color" value="#060e1f" oninput="syncRectStyle()" title="Color de fondo">
+        </div>
+        <div class="opacity-row">
+          <span style="font-size:9px;color:var(--muted);flex-shrink:0;letter-spacing:0.2em">Opacidad</span>
+          <input type="range" id="rect-bg-opacity" min="0" max="100" value="55" oninput="syncRectStyle()">
+          <span class="opacity-val" id="rect-bg-opacity-val">55%</span>
+        </div>
+
+        <!-- Borde -->
+        <div class="text-format-row" style="margin-top:8px">
+          <button class="fmt-btn on" id="btn-border-on" onclick="toggleRectStyle('borderOn')" title="Activar / desactivar borde">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="2" width="20" height="20" rx="2"/></svg>
+          </button>
+          <span class="prop-label" style="margin:0;flex-shrink:0">Borde</span>
+          <input type="color" class="color-swatch" id="rect-border-color" value="#7ab4d4" oninput="syncRectStyle()" title="Color de borde">
+        </div>
+
+        <div class="section-divider"></div>
+
+        <div class="prop-row">
+          <span class="prop-label">Aparece en</span>
+          <select class="wp-link-select" id="rect-linked-wp" onchange="syncRectLinked()">
+            <option value="0">Siempre visible</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="canvas-area" class="mode-wp">
+    <div id="image-container">
+      <img id="target-img" src="" alt="" draggable="false" ondragstart="return false" style="display:none">
+      <div class="empty-state" id="empty-state">
+        <div class="empty-icon">⊹</div>
+        <p class="empty-text">Carga un plano para comenzar<br>
+          Modo Waypoint · doble clic para agregar puntos<br>
+          Modo Rectángulo · arrastra para dibujar</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="hint-bar" id="hint-bar">Doble clic · waypoint &nbsp;|&nbsp; Arrastra · mover</div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     VISTA PREVIEW
+     ══════════════════════════════════════════════ -->
+<div id="preview-view">
+  <button class="preview-back" onclick="exitPreview()">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+    Volver al editor
+  </button>
+  <div class="preview-nav">
+    <span class="nav-hint">Scroll para navegar</span>
+    <div class="nav-dots" id="preview-nav-dots"></div>
+    <span class="nav-label" id="preview-nav-label"></span>
+  </div>
+  <div id="preview-viewport">
+    <div id="preview-img-wrapper"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     MODAL EXPORT
+     ══════════════════════════════════════════════ -->
+<div id="export-modal">
+  <p class="modal-title">Configuración — Landing Page</p>
+  <textarea id="export-text" readonly spellcheck="false"></textarea>
+  <div class="modal-foot">
+    <button class="btn accent" id="btn-copy">Copiar</button>
+    <button class="btn" onclick="document.getElementById('export-modal').style.display='none'">Cerrar</button>
+  </div>
+</div>
+
+<script>
+  gsap.registerPlugin(Observer);
+
+  // ── Estado global ──────────────────────────────────────
+  const fileInput    = document.getElementById('file-input');
+  const targetImg    = document.getElementById('target-img');
+  const emptyState   = document.getElementById('empty-state');
+  const imgContainer = document.getElementById('image-container');
+  const canvasArea   = document.getElementById('canvas-area');
+  const outlinerEl   = document.getElementById('outliner');
+  const hintBar      = document.getElementById('hint-bar');
+
+  let waypoints      = [];
+  let rectangles     = [];
+  let selectedWpId   = null;
+  let selectedRectId = null;
+  let mode           = 'waypoint'; // 'waypoint' | 'rect'
+  let previewObs     = null;
+
+  // drag waypoint
+  let isDraggingWp   = false;
+  let dragWp         = null;
+  // drag rect (move)
+  let isDraggingRect = false;
+  let dragRect       = null;
+  let dragRectOff    = { x: 0, y: 0 };
+  // resize rect
+  let isResizingRect = false;
+  let resizeRect     = null;
+  let resizeOrigin   = { x: 0, y: 0, w: 0, h: 0 };
+  // draw rect
+  let isDrawingRect  = false;
+  let rectDrawStart  = { x: 0, y: 0 };
+  let rectDrawEl     = null;
+
+  // ── Modo ───────────────────────────────────────────────
+  function setMode(m) {
+    mode = m;
+    canvasArea.className = `mode-${m === 'waypoint' ? 'wp' : 'rect'}`;
+    document.getElementById('mode-wp').classList.toggle('active', m === 'waypoint');
+    document.getElementById('mode-rect').classList.toggle('active', m === 'rect');
+    hintBar.textContent = m === 'waypoint'
+      ? 'Doble clic · waypoint  |  Arrastra · mover'
+      : 'Arrastra para dibujar un rectángulo';
+    // Deseleccionar todo al cambiar modo
+    selectedWpId = null; selectedRectId = null;
+    showProps(null);
+    render();
+  }
+
+  // ── Cargar imagen ──────────────────────────────────────
+  fileInput.addEventListener('change', e => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = f => {
+      targetImg.src = f.target.result;
+      targetImg.style.display = 'block';
+      emptyState.style.display = 'none';
+      waypoints = []; rectangles = []; selectedWpId = null; selectedRectId = null;
+      showProps(null); render();
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // ── Doble clic canvas → waypoint ──────────────────────
+  imgContainer.addEventListener('dblclick', e => {
+    if (mode !== 'waypoint') return;
+    if (!targetImg.src || targetImg.style.display === 'none') return;
+    if (e.target.classList.contains('waypoint') ||
+        e.target.classList.contains('rect-item') ||
+        e.target.closest('.rect-item')) return;
+    const rect = imgContainer.getBoundingClientRect();
+    const id   = Date.now();
+    waypoints.push({ id, x: e.clientX - rect.left, y: e.clientY - rect.top });
+    selectedWpId = id; selectedRectId = null;
+    render(); showProps('wp');
+  });
+
+  // ── Canvas mousedown: iniciar dibujo rect ─────────────
+  canvasArea.addEventListener('mousedown', e => {
+    if (mode !== 'rect') return;
+    if (!targetImg.src || targetImg.style.display === 'none') return;
+    if (e.target.classList.contains('waypoint') ||
+        e.target.classList.contains('rect-item') ||
+        e.target.classList.contains('rect-resize-handle') ||
+        e.target.closest('.rect-item')) return;
+    e.preventDefault(); // bloquear drag nativo del browser sobre la imagen
+    const rect = imgContainer.getBoundingClientRect();
+    rectDrawStart = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    isDrawingRect = true;
+    rectDrawEl = document.createElement('div');
+    rectDrawEl.className = 'rect-drawing';
+    rectDrawEl.style.left = `${rectDrawStart.x}px`;
+    rectDrawEl.style.top  = `${rectDrawStart.y}px`;
+    imgContainer.appendChild(rectDrawEl);
+  });
+
+  // ── Global mousemove ───────────────────────────────────
+  window.addEventListener('mousemove', e => {
+    const contRect = imgContainer.getBoundingClientRect();
+
+    // Dibujar nuevo rectángulo
+    if (isDrawingRect && rectDrawEl) {
+      const cx = e.clientX - contRect.left;
+      const cy = e.clientY - contRect.top;
+      const x  = Math.min(cx, rectDrawStart.x);
+      const y  = Math.min(cy, rectDrawStart.y);
+      const w  = Math.abs(cx - rectDrawStart.x);
+      const h  = Math.abs(cy - rectDrawStart.y);
+      Object.assign(rectDrawEl.style, {
+        left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px'
+      });
+    }
+
+    // Mover waypoint
+    if (isDraggingWp && dragWp) {
+      dragWp.x = e.clientX - contRect.left;
+      dragWp.y = e.clientY - contRect.top;
+      const el = document.querySelector(`.waypoint[data-id="${dragWp.id}"]`);
+      if (el) { el.style.left = `${dragWp.x}px`; el.style.top = `${dragWp.y}px`; }
+      updateWpCoords(dragWp);
+    }
+
+    // Mover rectángulo
+    if (isDraggingRect && dragRect) {
+      dragRect.x = e.clientX - contRect.left - dragRectOff.x;
+      dragRect.y = e.clientY - contRect.top  - dragRectOff.y;
+      const el = document.querySelector(`.rect-item[data-id="${dragRect.id}"]`);
+      if (el) { el.style.left = `${dragRect.x}px`; el.style.top = `${dragRect.y}px`; }
+    }
+
+    // Redimensionar rectángulo
+    if (isResizingRect && resizeRect) {
+      const dx = e.clientX - contRect.left - resizeOrigin.mx;
+      const dy = e.clientY - contRect.top  - resizeOrigin.my;
+      resizeRect.w = Math.max(40, resizeOrigin.w + dx);
+      resizeRect.h = Math.max(30, resizeOrigin.h + dy);
+      const el = document.querySelector(`.rect-item[data-id="${resizeRect.id}"]`);
+      if (el) { el.style.width = `${resizeRect.w}px`; el.style.height = `${resizeRect.h}px`; }
+    }
+  });
+
+  // ── Global mouseup ─────────────────────────────────────
+  window.addEventListener('mouseup', e => {
+    // Finalizar dibujo de rect
+    if (isDrawingRect && rectDrawEl) {
+      isDrawingRect = false;
+      const contRect = imgContainer.getBoundingClientRect();
+      const cx = e.clientX - contRect.left;
+      const cy = e.clientY - contRect.top;
+      const x  = Math.min(cx, rectDrawStart.x);
+      const y  = Math.min(cy, rectDrawStart.y);
+      const w  = Math.abs(cx - rectDrawStart.x);
+      const h  = Math.abs(cy - rectDrawStart.y);
+      rectDrawEl.remove(); rectDrawEl = null;
+      if (w > 24 && h > 18) {
+        const id = Date.now();
+        rectangles.push({
+          id, x, y, w, h,
+          html: '', font: 'Georgia, serif',
+          bold: false, italic: false,
+          color: '#c8e0f0', linkedWp: 0,
+          fontSize: 13, textAlign: 'left', lineHeight: 1.4,
+          bgOn: true,     bgColor: '#060e1f', bgOpacity: 55,
+          borderOn: true, borderColor: '#7ab4d4'
+        });
+        selectedRectId = id; selectedWpId = null;
+        render(); showProps('rect');
+      }
+    }
+    if (isDraggingWp)   { isDraggingWp   = false; render(); }
+    if (isDraggingRect) { isDraggingRect  = false; render(); }
+    if (isResizingRect) { isResizingRect  = false; render(); }
+  });
+
+  // ── Render principal ───────────────────────────────────
+  function render() {
+    // Limpiar waypoints y rects del DOM
+    document.querySelectorAll('.waypoint, .rect-item').forEach(el => el.remove());
+    renderOutliner();
+
+    // Waypoints
+    waypoints.forEach((wp, i) => {
+      const el = document.createElement('div');
+      el.className = `waypoint ${wp.id === selectedWpId ? 'selected' : ''}`;
+      el.style.left = `${wp.x}px`; el.style.top = `${wp.y}px`;
+      el.dataset.id = wp.id; el.textContent = i + 1;
+      el.onmousedown = e => {
+        e.stopPropagation();
+        if (mode !== 'waypoint') return;
+        isDraggingWp = true; dragWp = wp;
+        selectedWpId = wp.id; selectedRectId = null;
+        render(); showProps('wp');
+      };
+      el.onclick = e => {
+        e.stopPropagation();
+        if (mode !== 'waypoint') return;
+        selectedWpId = wp.id; selectedRectId = null;
+        render(); showProps('wp');
+      };
+      imgContainer.appendChild(el);
+    });
+
+    // Rectangles
+    rectangles.forEach((r, i) => {
+      const el = document.createElement('div');
+      const isSel = r.id === selectedRectId;
+      el.className = `rect-item ${isSel ? 'selected' : ''}`;
+      Object.assign(el.style, {
+        left: `${r.x}px`, top: `${r.y}px`,
+        width: `${r.w}px`, height: `${r.h}px`,
+        background: rectBg(r),
+        border: rectBorder(r, isSel),
+        backdropFilter: r.bgOn ? 'blur(2px)' : 'none',
+      });
+      el.dataset.id = r.id;
+
+      // Texto interno
+      const textEl = document.createElement('div');
+      textEl.className = 'rect-text-display';
+      textEl.innerHTML = r.html || '';
+      Object.assign(textEl.style, {
+        fontFamily: r.font, fontWeight: r.bold ? 'bold' : 'normal',
+        fontStyle: r.italic ? 'italic' : 'normal', color: r.color,
+        fontSize: `${r.fontSize || 13}px`,
+        textAlign: r.textAlign || 'left',
+        lineHeight: r.lineHeight || 1.4,
+      });
+      el.appendChild(textEl);
+
+      // Handle resize
+      const handle = document.createElement('div');
+      handle.className = 'rect-resize-handle';
+      handle.onmousedown = e => {
+        e.stopPropagation();
+        isResizingRect = true; resizeRect = r;
+        const contRect = imgContainer.getBoundingClientRect();
+        resizeOrigin = { mx: e.clientX - contRect.left, my: e.clientY - contRect.top, w: r.w, h: r.h };
+      };
+      el.appendChild(handle);
+
+      el.onmousedown = e => {
+        if (e.target === handle) return;
+        e.stopPropagation();
+        isDraggingRect = true; dragRect = r;
+        dragRectOff = { x: e.offsetX, y: e.offsetY };
+        selectedRectId = r.id; selectedWpId = null;
+        render(); showProps('rect');
+      };
+      el.onclick = e => {
+        e.stopPropagation();
+        selectedRectId = r.id; selectedWpId = null;
+        render(); showProps('rect');
+      };
+      imgContainer.appendChild(el);
+    });
+  }
+
+  function renderOutliner() {
+    outlinerEl.innerHTML = '';
+
+    // Sección waypoints
+    const wpLabel = document.createElement('span');
+    wpLabel.className = 'outliner-section-label'; wpLabel.textContent = 'Waypoints';
+    outlinerEl.appendChild(wpLabel);
+    if (waypoints.length === 0) {
+      const empty = document.createElement('span');
+      empty.style.cssText = 'font-size:10px;color:var(--muted);opacity:0.4;padding:2px 4px';
+      empty.textContent = 'Sin waypoints';
+      outlinerEl.appendChild(empty);
+    }
+    waypoints.forEach((wp, i) => {
+      const item = document.createElement('div');
+      item.className = `outliner-item ${wp.id === selectedWpId ? 'selected' : ''}`;
+      item.innerHTML = `<div class="outliner-num">${i+1}</div><span class="name">Waypoint ${i+1}</span><button class="btn-del">&times;</button>`;
+      item.querySelector('.btn-del').onclick = e => { e.stopPropagation(); deleteWp(wp.id); };
+      item.onclick = () => { selectedWpId = wp.id; selectedRectId = null; render(); showProps('wp'); };
+      outlinerEl.appendChild(item);
+    });
+
+    // Separador + sección rects
+    if (rectangles.length > 0) {
+      const sep = document.createElement('div'); sep.className = 'outliner-sep';
+      outlinerEl.appendChild(sep);
+      const rLabel = document.createElement('span');
+      rLabel.className = 'outliner-section-label'; rLabel.textContent = 'Rectángulos';
+      outlinerEl.appendChild(rLabel);
+      rectangles.forEach((r, i) => {
+        const item = document.createElement('div');
+        item.className = `outliner-item ${r.id === selectedRectId ? 'selected' : ''}`;
+        const plainText = (r.html || '').replace(/<[^>]*>/g, '').trim();
+        const label = plainText ? plainText.substring(0, 18) + (plainText.length > 18 ? '…' : '') : `Rect ${i+1}`;
+        item.innerHTML = `<div class="outliner-rect-icon"></div><span class="name">${label}</span><button class="btn-del">&times;</button>`;
+        item.querySelector('.btn-del').onclick = e => { e.stopPropagation(); deleteRect(r.id); };
+        item.onclick = () => { selectedRectId = r.id; selectedWpId = null; render(); showProps('rect'); };
+        outlinerEl.appendChild(item);
+      });
+    }
+  }
+
+  function deleteWp(id) {
+    waypoints = waypoints.filter(w => w.id !== id);
+    if (selectedWpId === id) { selectedWpId = null; showProps(null); }
+    render();
+  }
+  function deleteRect(id) {
+    rectangles = rectangles.filter(r => r.id !== id);
+    if (selectedRectId === id) { selectedRectId = null; showProps(null); }
+    render();
+  }
+
+  // ── Panel de propiedades ───────────────────────────────
+  function showProps(type) {
+    document.getElementById('wp-props').style.display   = type === 'wp'   ? 'block' : 'none';
+    document.getElementById('rect-props').style.display = type === 'rect' ? 'block' : 'none';
+    if (type === null) {
+      document.getElementById('wp-props').style.display = 'block';
+      document.getElementById('wp-coords').innerHTML = '<span style="opacity:0.35">— Selecciona un punto —</span>';
+    }
+    if (type === 'wp' && selectedWpId) {
+      const wp = waypoints.find(w => w.id === selectedWpId);
+      if (wp) updateWpCoords(wp);
+    }
+    if (type === 'rect' && selectedRectId) {
+      populateRectEditor();
+    }
+  }
+
+  function updateWpCoords(wp) {
+    const iW = imgContainer.offsetWidth || 1;
+    const iH = imgContainer.offsetHeight || 1;
+    document.getElementById('wp-coords').innerHTML =
+      `<b>px</b>&nbsp; x: ${Math.round(wp.x)} · y: ${Math.round(wp.y)}<br>
+       <b>norm</b> nx: ${(wp.x/iW).toFixed(4)} · ny: ${(wp.y/iH).toFixed(4)}`;
+  }
+
+  function populateRectEditor() {
+    const r = rectangles.find(r => r.id === selectedRectId);
+    if (!r) return;
+    const ed = document.getElementById('rect-text-editor');
+    ed.innerHTML = r.html || '';
+    document.getElementById('rect-font').value  = r.font;
+    document.getElementById('rect-color').value = r.color;
+    document.getElementById('btn-bold').classList.toggle('on',   r.bold);
+    document.getElementById('btn-italic').classList.toggle('on', r.italic);
+    const fs = r.fontSize || 13;
+    document.getElementById('rect-font-size').value     = Math.min(fs, 72);
+    document.getElementById('rect-font-size-num').value = fs;
+    document.getElementById('rect-font-size-val').textContent = fs + 'px';
+    // Alineación
+    const ta = r.textAlign || 'left';
+    ['left','center','right'].forEach(a =>
+      document.getElementById('align-'+a).classList.toggle('on', a === ta));
+    // Interlineado
+    const lh = r.lineHeight || 1.4;
+    document.getElementById('rect-line-height').value = Math.round(lh * 10);
+    document.getElementById('rect-lh-val').textContent = lh.toFixed(1);
+    // Fondo
+    document.getElementById('btn-bg-on').classList.toggle('on', r.bgOn);
+    document.getElementById('rect-bg-color').value    = r.bgColor;
+    document.getElementById('rect-bg-opacity').value  = r.bgOpacity;
+    document.getElementById('rect-bg-opacity-val').textContent = r.bgOpacity + '%';
+    // Borde
+    document.getElementById('btn-border-on').classList.toggle('on', r.borderOn);
+    document.getElementById('rect-border-color').value = r.borderColor;
+    refreshLinkedWpSelect(r.linkedWp);
+  }
+
+  function refreshLinkedWpSelect(currentVal) {
+    const sel = document.getElementById('rect-linked-wp');
+    sel.innerHTML = '<option value="0">Siempre visible</option>';
+    waypoints.forEach((wp, i) => {
+      const opt = document.createElement('option');
+      opt.value = i + 1; opt.textContent = `Waypoint ${i+1}`;
+      if (i + 1 === currentVal) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  }
+
+  // Sync html content desde el contenteditable
+  function syncRectHtml() {
+    const r = rectangles.find(r => r.id === selectedRectId); if (!r) return;
+    r.html = document.getElementById('rect-text-editor').innerHTML;
+    renderOutliner(); // actualiza label en outliner
+  }
+
+  // ¿Hay texto seleccionado dentro del editor?
+  function editorHasSel() {
+    const ed  = document.getElementById('rect-text-editor');
+    const sel = window.getSelection();
+    return sel && !sel.isCollapsed && ed && ed.contains(sel.anchorNode);
+  }
+
+  // Bold — aplica a selección o toggle global
+  function applyBold() {
+    const r = rectangles.find(r => r.id === selectedRectId); if (!r) return;
+    const ed = document.getElementById('rect-text-editor');
+    if (editorHasSel()) {
+      document.execCommand('bold'); syncRectHtml();
+    } else {
+      r.bold = !r.bold;
+      document.getElementById('btn-bold').classList.toggle('on', r.bold);
+      render();
+    }
+  }
+
+  // Italic — aplica a selección o toggle global
+  function applyItalic() {
+    const r = rectangles.find(r => r.id === selectedRectId); if (!r) return;
+    if (editorHasSel()) {
+      document.execCommand('italic'); syncRectHtml();
+    } else {
+      r.italic = !r.italic;
+      document.getElementById('btn-italic').classList.toggle('on', r.italic);
+      render();
+    }
+  }
+
+  // Color — aplica a selección o global
+  function applyColor(val) {
+    const r = rectangles.find(r => r.id === selectedRectId); if (!r) return;
+    r.color = val;
+    if (editorHasSel()) {
+      document.execCommand('foreColor', false, val); syncRectHtml();
+    } else { render(); }
+  }
+
+  // Tamaño — aplica a selección o global
+  function applyFontSize(val) {
+    const r = rectangles.find(r => r.id === selectedRectId); if (!r) return;
+    const sz = Math.max(8, parseInt(val) || 13);
+    r.fontSize = sz;
+    document.getElementById('rect-font-size-val').textContent = sz + 'px';
+    document.getElementById('rect-font-size-num').value = sz;
+    document.getElementById('rect-font-size').value = Math.min(sz, 72);
+    if (editorHasSel()) {
+      // Wrap selection in <span style="font-size:...">
+      const sel = window.getSelection();
+      const range = sel.getRangeAt(0);
+      const span = document.createElement('span');
+      span.style.fontSize = sz + 'px';
+      try {
+        range.surroundContents(span);
+      } catch(_) {
+        // Selection spans elements — extract + rewrap
+        span.appendChild(range.extractContents());
+        range.insertNode(span);
+      }
+      syncRectHtml();
+    } else { render(); }
+  }
+
+  // Fuente — aplica a selección o global
+  function applyFont(val) {
+    const r = rectangles.find(r => r.id === selectedRectId); if (!r) return;
+    r.font = val;
+    if (editorHasSel()) {
+      document.execCommand('fontName', false, val); syncRectHtml();
+    } else { render(); }
+  }
+
+  // Alineación — siempre al rect completo
+  function applyAlign(align) {
+    const r = rectangles.find(r => r.id === selectedRectId); if (!r) return;
+    r.textAlign = align;
+    ['left','center','right'].forEach(a =>
+      document.getElementById('align-'+a).classList.toggle('on', a === align));
+    render();
+  }
+
+  // Interlineado — siempre al rect completo
+  function applyLineHeight(val) {
+    const r = rectangles.find(r => r.id === selectedRectId); if (!r) return;
+    r.lineHeight = parseFloat((parseInt(val) / 10).toFixed(1));
+    document.getElementById('rect-lh-val').textContent = r.lineHeight.toFixed(1);
+    render();
+  }
+
+  function syncRectText() {} // mantenido por compatibilidad, ya no se usa
+
+  function syncRectStyle() {
+    const r = rectangles.find(r => r.id === selectedRectId); if (!r) return;
+    r.bgColor     = document.getElementById('rect-bg-color').value;
+    r.bgOpacity   = parseInt(document.getElementById('rect-bg-opacity').value);
+    r.borderColor = document.getElementById('rect-border-color').value;
+    document.getElementById('rect-bg-opacity-val').textContent = r.bgOpacity + '%';
+    render();
+  }
+
+  function toggleRectStyle(prop) {
+    const r = rectangles.find(r => r.id === selectedRectId); if (!r) return;
+    r[prop] = !r[prop];
+    const btnId = prop === 'bgOn' ? 'btn-bg-on' : 'btn-border-on';
+    document.getElementById(btnId).classList.toggle('on', r[prop]);
+    render();
+  }
+
+  // hex #rrggbb → {r,g,b}
+  function hexToRgb(hex) {
+    const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return m ? { r: parseInt(m[1],16), g: parseInt(m[2],16), b: parseInt(m[3],16) } : null;
+  }
+
+  function rectBg(r) {
+    if (!r.bgOn) return 'transparent';
+    const c = hexToRgb(r.bgColor);
+    return c ? `rgba(${c.r},${c.g},${c.b},${r.bgOpacity/100})` : 'transparent';
+  }
+  function rectBorder(r, isSelected) {
+    if (r.borderOn) return `1px solid ${r.borderColor}`;
+    // seleccionado sin borde → guía punteada sutil para poder verlo/moverlo
+    return isSelected ? '1px dashed rgba(122,180,212,0.30)' : '1px dashed rgba(122,180,212,0.12)';
+  }
+
+  function syncRectLinked() {
+    const r = rectangles.find(r => r.id === selectedRectId); if (!r) return;
+    r.linkedWp = parseInt(document.getElementById('rect-linked-wp').value);
+  }
+
+
+  // ── Exportar ───────────────────────────────────────────
+  document.getElementById('btn-export').onclick = () => {
+    if (waypoints.length === 0 && rectangles.length === 0)
+      return alert('Agrega waypoints o rectángulos primero.');
+    const iW = imgContainer.offsetWidth || 1;
+    const iH = imgContainer.offsetHeight || 1;
+    const data = {
+      waypoints: waypoints.map((wp, i) => ({
+        name: `Waypoint ${i+1}`,
+        nx: parseFloat((wp.x / iW).toFixed(4)),
+        ny: parseFloat((wp.y / iH).toFixed(4)),
+      })),
+      labels: rectangles.map((r, i) => ({
+        name: r.text ? r.text.substring(0, 20) : `Rect ${i+1}`,
+        nx:  parseFloat((r.x / iW).toFixed(4)),
+        ny:  parseFloat((r.y / iH).toFixed(4)),
+        nw:  parseFloat((r.w / iW).toFixed(4)),
+        nh:  parseFloat((r.h / iH).toFixed(4)),
+        html:      r.html || '',
+        font:      r.font,
+        bold:      r.bold,
+        italic:    r.italic,
+        fontSize:  r.fontSize || 13,
+        textAlign: r.textAlign || 'left',
+        lineHeight: r.lineHeight || 1.4,
+        color:     r.color,
+        bgOn:        r.bgOn,
+        bgColor:     r.bgColor,
+        bgOpacity:   r.bgOpacity,
+        borderOn:    r.borderOn,
+        borderColor: r.borderColor,
+        linkedWp: r.linkedWp,
+      })),
+    };
+    document.getElementById('export-text').value = JSON.stringify(data, null, 2);
+    document.getElementById('export-modal').style.display = 'block';
+  };
+
+  document.getElementById('btn-copy').onclick = () => {
+    const ta = document.getElementById('export-text');
+    ta.select(); document.execCommand('copy');
+    const btn = document.getElementById('btn-copy');
+    btn.textContent = '✓ Copiado';
+    setTimeout(() => { btn.textContent = 'Copiar'; }, 1800);
+  };
+
+  // ── Preview ────────────────────────────────────────────
+  document.getElementById('btn-preview').onclick = () => {
+    if (!targetImg.src || targetImg.style.display === 'none') return alert('Carga el plano primero.');
+    if (waypoints.length === 0) return alert('Agrega waypoints para navegar.');
+
+    document.getElementById('editor-view').style.display  = 'none';
+    document.getElementById('preview-view').style.display = 'block';
+
+    const wrapper = document.getElementById('preview-img-wrapper');
+    wrapper.innerHTML = '';
+
+    // Imagen
+    const imgClone = document.createElement('img');
+    imgClone.src = targetImg.src;
+    wrapper.appendChild(imgClone);
+
+    imgClone.onload = () => {
+      // Waypoint markers
+      waypoints.forEach((wp, i) => {
+        const pt = document.createElement('div');
+        pt.className = 'preview-waypoint';
+        pt.style.left = `${wp.x}px`; pt.style.top = `${wp.y}px`;
+        pt.textContent = i + 1;
+        wrapper.appendChild(pt);
+      });
+
+      // Rect labels
+      const previewRects = rectangles.map(r => {
+        const el = document.createElement('div');
+        el.className = 'preview-rect';
+        Object.assign(el.style, {
+          left: `${r.x}px`, top: `${r.y}px`,
+          width: `${r.w}px`, height: `${r.h}px`,
+          background: rectBg(r),
+          border: r.borderOn ? `1px solid ${r.borderColor}` : 'none',
+          backdropFilter: r.bgOn ? 'blur(6px)' : 'none',
+        });
+        const txt = document.createElement('div');
+        txt.className = 'preview-rect-text';
+        txt.innerHTML = r.html || '';
+        Object.assign(txt.style, {
+          fontFamily: r.font, fontWeight: r.bold ? 'bold' : 'normal',
+          fontStyle: r.italic ? 'italic' : 'normal', color: r.color,
+          fontSize: `${r.fontSize || 13}px`,
+          textAlign: r.textAlign || 'left',
+          lineHeight: r.lineHeight || 1.4,
+        });
+        el.appendChild(txt);
+        wrapper.appendChild(el);
+        // Siempre visible → opacity 1 desde inicio
+        if (r.linkedWp === 0) gsap.set(el, { opacity: 1 });
+        return el;
+      });
+
+      // Nav dots
+      const dotsEl  = document.getElementById('preview-nav-dots');
+      const labelEl = document.getElementById('preview-nav-label');
+      dotsEl.innerHTML = '';
+      waypoints.forEach((_, i) => {
+        const d = document.createElement('div');
+        d.className = `nav-dot ${i === 0 ? 'active' : ''}`;
+        dotsEl.appendChild(d);
+      });
+
+      let indice   = 0;
+      let animando = false;
+
+      const centrarEn = wp => ({
+        x: (window.innerWidth  / 2) - wp.x,
+        y: (window.innerHeight / 2) - wp.y,
+      });
+
+      labelEl.textContent = `Waypoint 1 / ${waypoints.length}`;
+      gsap.set(wrapper, centrarEn(waypoints[0]));
+
+      // Mostrar rects del waypoint 0
+      updatePreviewRects(previewRects, 0);
+
+      function irA(i) {
+        if (animando || i < 0 || i >= waypoints.length) return;
+        animando = true; indice = i;
+        dotsEl.querySelectorAll('.nav-dot').forEach((d, j) => d.classList.toggle('active', j === i));
+        labelEl.textContent = `Waypoint ${i+1} / ${waypoints.length}`;
+        gsap.to(wrapper, {
+          ...centrarEn(waypoints[i]),
+          duration: 1.4, ease: 'power3.inOut',
+          onComplete: () => { animando = false; }
+        });
+        updatePreviewRects(previewRects, i);
+      }
+
+      function updatePreviewRects(pRects, wpIdx) {
+        pRects.forEach((el, ri) => {
+          const r = rectangles[ri];
+          if (r.linkedWp === 0) return; // siempre visible, no tocar
+          const shouldShow = r.linkedWp === wpIdx + 1;
+          gsap.to(el, { opacity: shouldShow ? 1 : 0, duration: 0.45, ease: 'power2.inOut' });
+        });
+      }
+
+      // ── FIX scroll: abajo → siguiente, arriba → anterior ──
+      previewObs = Observer.create({
+        target: window, type: 'wheel,touch,pointer',
+        tolerance: 10, preventDefault: true,
+        onDown: () => irA(indice + 1),
+        onUp:   () => irA(indice - 1),
+      });
+    };
+  };
+
+  function exitPreview() {
+    if (previewObs) { previewObs.kill(); previewObs = null; }
+    document.getElementById('preview-view').style.display  = 'none';
+    document.getElementById('editor-view').style.display   = 'block';
+    render();
+  }
+
+  // Init
+  render();
+</script>
+</body>
+</html>

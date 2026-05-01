@@ -1,0 +1,33 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --color-black:   #020508;
+  --color-bg-deep: #030810;
+  --color-bg-mid:  #071220;
+  --color-white:   #e8f2f8;
+  --color-accent:  #7ab4d4;
+  --color-accent2: #4a8ab0;
+  --color-muted:   rgba(180, 210, 230, 0.45);
+  --color-red:     #7a2020;
+  --font-serif:    "Cormorant Garamond", "Noto Serif JP", Georgia, serif;
+  --font-jp:       "Noto Serif JP", "Cormorant Garamond", serif;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-serif);
+  background: var(--color-black);
+  color: var(--color-white);
+  overflow-x: hidden;
+}
+
+::selection { background: rgba(122, 180, 212, 0.25); }
+
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: #020508; }
+::-webkit-scrollbar-thumb { background: var(--color-accent2); border-radius: 2px; }
