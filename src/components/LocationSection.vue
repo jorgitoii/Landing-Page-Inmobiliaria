@@ -909,11 +909,19 @@ const open360 = async src => {
   sRen = new THREE.WebGLRenderer({ canvas: sphereCanvas.value, antialias: true })
   sRen.setSize(w, h)
   sRen.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-  sRen.toneMapping = THREE.ACESFilmicToneMapping
-  sRen.toneMappingExposure = 0.87
+  sRen.toneMapping = THREE.NoToneMapping
+  sRen.outputColorSpace = THREE.SRGBColorSpace
   const geo = new THREE.SphereGeometry(500, 64, 32)
   geo.scale(-1, 1, 1)
-  sScene.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load(src) })))
+  const sMat = new THREE.MeshBasicMaterial({ side: THREE.FrontSide })
+  sScene.add(new THREE.Mesh(geo, sMat))
+  new THREE.TextureLoader().load(src, tex => {
+    tex.colorSpace = THREE.SRGBColorSpace
+    tex.generateMipmaps = false
+    tex.minFilter = THREE.LinearFilter
+    sMat.map = tex
+    sMat.needsUpdate = true
+  })
   sLon = 0; sLat = 0
   const sLoop = () => {
     sAnimId = requestAnimationFrame(sLoop)
@@ -1412,4 +1420,95 @@ const close3d = () => { show3d.value = false; cancelAnimationFrame(fAnimId); if 
   }
   50% { opacity: 0.45; }
 }
+
+/* ── Model card ────────────────────────────────────────── */
+.model-card {
+  display: flex; flex-direction: column;
+  position: relative; overflow: hidden;
+  min-height: 500px;
+}
+.model-wrap { flex: 1; min-height: 480px; position: relative; overflow: hidden; }
+.model-wrap canvas { width: 100%; height: 100%; display: block; }
+.model-footer {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 16px; flex-shrink: 0;
+  border-top: 1px solid rgba(122,180,212,0.08);
+}
+.model-footer span {
+  font-family: var(--font-serif); font-size: 12px;
+  letter-spacing: 0.4em; text-transform: uppercase;
+  color: rgba(200,225,240,0.4);
+}
+.model-hint-txt { font-size: 11px; color: rgba(122,180,212,0.32); }
+.model-deco {
+  position: absolute; bottom: 44px; right: 20px;
+  font-size: 18px; color: rgba(200,225,240,0.18);
+  pointer-events: none; line-height: 1;
+}
+
+/* ── Brújula ────────────────────────────────────────────── */
+.compass-wrap {
+  position: absolute; bottom: 52px; right: 18px;
+  z-index: 10; pointer-events: none;
+}
+.compass-svg { width: 64px; height: 64px; display: block; }
+
+/* ══════════════════════════════════════════════════════════
+   OVERLAYS 360 / 3D
+   ══════════════════════════════════════════════════════════ */
+.full-overlay {
+  position: fixed; inset: 0; z-index: 400;
+  background: rgba(2,5,12,0.92); backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+}
+.ov-close {
+  position: absolute; top: 32px; left: 36px;
+  background: none; border: 1px solid rgba(122,180,212,0.25);
+  color: rgba(200,225,240,0.72);
+  width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all 0.3s; z-index: 10;
+}
+.ov-close:hover { border-color: var(--color-accent); color: var(--color-accent); }
+.ov-close svg   { width: 20px; height: 20px; }
+.sphere-wrap { width: 84vw; max-width: 1100px; display: flex; flex-direction: column; gap: 14px; }
+.sphere-canvas { width: 100%; height: 64vh; display: block; cursor: grab; border: 1px solid rgba(122,180,212,0.12); filter: brightness(0.90) saturate(2.02) contrast(1.34) sepia(0.35); }
+.sphere-canvas:active { cursor: grabbing; }
+
+/* ── Circular float (used by all hint icons) ────────────── */
+@keyframes circularFloat {
+  0%    { transform: translate(0px,   -5px); }
+  12.5% { transform: translate(3.5px, -3.5px); }
+  25%   { transform: translate(5px,   0px); }
+  37.5% { transform: translate(3.5px,  3.5px); }
+  50%   { transform: translate(0px,    5px); }
+  62.5% { transform: translate(-3.5px, 3.5px); }
+  75%   { transform: translate(-5px,   0px); }
+  87.5% { transform: translate(-3.5px,-3.5px); }
+  100%  { transform: translate(0px,   -5px); }
+}
+
+/* ── Per-cell gallery hint ──────────────────────────────── */
+.cell-hint-overlay {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  background: rgba(0,0,0,0.28); z-index: 3; pointer-events: none;
+}
+.worldwide-wrap {
+  width: 52px; height: 52px;
+  animation: circularFloat 3s ease-in-out infinite;
+  filter: saturate(0) drop-shadow(0 0 6px rgba(122,180,212,0.4));
+  flex-shrink: 0;
+}
+.worldwide-vid { width: 100%; height: 100%; object-fit: contain; display: block; }
+.cell-hint-label {
+  font-family: var(--font-serif); font-size: 10px; font-weight: 300;
+  letter-spacing: 0.32em; text-transform: uppercase; color: rgba(200,225,240,0.70);
+}
+.galleryHintFade-enter-active, .galleryHintFade-leave-active { transition: opacity 0.6s ease; }
+.galleryHintFade-enter-from,  .galleryHintFade-leave-to      { opacity: 0; }
+
+/* ── Transition overlays ────────────────────────────────── */
+.ofade-enter-active, .ofade-leave-active { transition: opacity 0.45s ease; }
+.ofade-enter-from,   .ofade-leave-to     { opacity: 0; }
 </style>
