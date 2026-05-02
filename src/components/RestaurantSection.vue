@@ -1,5 +1,5 @@
 <template>
-  <section ref="sectionRef" class="rest-section" id="restaurante">
+  <section ref="sectionRef" class="rest-section" id="restaurante" :style="sectionStyle">
     <div class="rest-sticky">
 
       <!-- Image + labels wrapper — translated to center active waypoint -->
@@ -133,6 +133,11 @@ let   hintTimer    = null
 // Image wrapper transform — centers the active waypoint in the viewport
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Mobile: sección crece a N×100vh para scroll nativo; desktop: 100vh con hijacking
+const sectionStyle = computed(() =>
+  vpW.value <= 768 ? { height: `${WAYPOINTS.length * 100}vh` } : {}
+)
+
 const wrapperStyle = computed(() => {
   if (!imgRenderedH.value) return { transform: 'translate(0px,0px)' }
   const wp = WAYPOINTS[activeWp.value]
@@ -237,8 +242,19 @@ function onScroll() {
   if (!el) return
   const r             = el.getBoundingClientRect()
   const enterProgress = (vpH.value - r.top) / r.height
-  // opacidad 1 → 0 en el primer 10% de la sección
   introOp.value = Math.max(0, 1 - enterProgress / 0.10)
+
+  // Mobile: activeWp se deriva del scroll, sin hijacking
+  if (vpW.value <= 768) {
+    const scrollable = r.height - vpH.value
+    if (scrollable > 0) {
+      const pct = Math.max(0, Math.min(1, -r.top / scrollable))
+      activeWp.value = Math.min(
+        WAYPOINTS.length - 1,
+        Math.round(pct * (WAYPOINTS.length - 1))
+      )
+    }
+  }
 }
 
 function onResize() {
@@ -253,11 +269,13 @@ function onResize() {
 onMounted(() => {
   io = new IntersectionObserver((entries) => {
     for (const e of entries) {
-      if (e.isIntersecting) {
-        const fromBelow = e.boundingClientRect.top > vpH.value * 0.5
-        startHijack(fromBelow)
-      } else {
-        stopHijack()
+      if (vpW.value > 768) {   // Desktop only: hijack scroll
+        if (e.isIntersecting) {
+          const fromBelow = e.boundingClientRect.top > vpH.value * 0.5
+          startHijack(fromBelow)
+        } else {
+          stopHijack()
+        }
       }
     }
   }, { threshold: 0.92 })
@@ -448,6 +466,9 @@ onUnmounted(() => {
 }
 
 @media (max-width: 768px) {
+  /* Sección tall: el sticky hace de viewport fijo mientras se scrollea */
+  .rest-section { height: auto; overflow: visible; }
+  .rest-sticky  { position: sticky; top: 0; }
   .rest-label { font-family: Georgia, serif; }
   .rest-nav-dots { right: 12px; gap: 7px; }
   .rest-dot { width: 5px; height: 5px; }
