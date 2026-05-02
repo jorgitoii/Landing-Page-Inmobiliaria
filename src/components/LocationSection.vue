@@ -1262,7 +1262,7 @@ const close3d = () => { show3d.value = false; cancelAnimationFrame(fAnimId); if 
   margin-bottom: 4px; line-height: 1.1;
 }
 .loc-subtitle-row {
-  display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+  display: flex; flex-direction: column; gap: 5px;
 }
 .loc-subtitle {
   font-family: var(--font-jp); font-size: 17.5px; font-weight: 200;
@@ -1272,6 +1272,7 @@ const close3d = () => { show3d.value = false; cancelAnimationFrame(fAnimId); if 
   font-family: var(--font-serif); font-size: 11px; font-weight: 300;
   letter-spacing: 0.15em; color: rgba(200,225,240,0.55);
   display: flex; flex-wrap: wrap; align-items: center; gap: 0;
+  max-width: 100%;
 }
 .amen-dot { opacity: 0.5; }
 .loc-rule {
@@ -1554,7 +1555,7 @@ const close3d = () => { show3d.value = false; cancelAnimationFrame(fAnimId); if 
   .loc-title        { font-size: clamp(2rem, 9vw, 3rem); }
 
   /* "Boutique" y amenidades van en columna para no comprimirse */
-  .loc-subtitle-row { flex-direction: column; gap: 3px; }
+  .loc-subtitle-row { gap: 2px; }
   .loc-subtitle     { font-size: 14px; letter-spacing: 0.22em; }
   .loc-amenities    { font-size: 9.5px; letter-spacing: 0.09em; display: flex; flex-direction: column; flex-wrap: nowrap; align-items: flex-start; gap: 3px; }
   .amen-dot         { display: none; }
