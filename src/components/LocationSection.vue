@@ -217,6 +217,7 @@ import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { GLTFLoader }    from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { DRACOLoader }   from 'three/examples/jsm/loaders/DRACOLoader.js'
 import { EffectComposer }  from 'three/examples/jsm/postprocessing/EffectComposer.js'
 import { RenderPass }      from 'three/examples/jsm/postprocessing/RenderPass.js'
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
@@ -820,7 +821,11 @@ function _loadModel () {
   const url = glbBlobUrl.value
     ? glbBlobUrl.value
     : 'https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/3D/Maqueta_opt.glb'
-  new GLTFLoader().load(
+  const dracoLoader = new DRACOLoader()
+  dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/')
+  const gltfLoader = new GLTFLoader()
+  gltfLoader.setDRACOLoader(dracoLoader)
+  gltfLoader.load(
     url,
     gltf => {
       _cachedModel = gltf.scene
