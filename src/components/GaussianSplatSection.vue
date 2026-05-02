@@ -246,8 +246,8 @@ const EX0 = 0.02762, EY0 = 0.05633, EZ0 =  0.25450  // base camera eye
 
 // Pan mode (replaces old parallax)
 const LERP    = 0.115
-const PAN_MAX      = 0.068   // mouse pan  (0.057 × 1.20)
-const PAN_MAX_FACE = 0.493   // webcam pan (0.176 × 2.80, +180%)
+const PAN_MAX      = 0.095   // mouse pan  (+40%)
+const PAN_MAX_FACE = 0.690   // webcam pan (+40%)
 let   panTargX = 0, panTargY = 0
 let   panCurrX = 0, panCurrY = 0
 
@@ -800,7 +800,7 @@ function loadScript (src) {
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   gap: 48px;
-  background: var(--color-black);
+  background: linear-gradient(to bottom, #2a1208 0%, #02060e 100%);
 }
 .gs-eyebrow {
   font-family: var(--font-jp);
