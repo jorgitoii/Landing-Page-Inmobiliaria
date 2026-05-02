@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 
-const GLB_URL = 'https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/3D/Maqueta.glb'
+const GLB_URL = 'https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/3D/Maqueta_opt.glb'
 
 // ── Shared reactive state (module-level singleton) ──────────────────────────
 export const glbLoadPct = ref(0)    // 0–100, raw download progress

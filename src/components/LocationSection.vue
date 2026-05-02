@@ -819,7 +819,7 @@ function _loadModel () {
   // Use preloaded blob if already downloaded, otherwise fall back to CDN
   const url = glbBlobUrl.value
     ? glbBlobUrl.value
-    : 'https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/3D/Maqueta.glb'
+    : 'https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/3D/Maqueta_opt.glb'
   new GLTFLoader().load(
     url,
     gltf => {
