@@ -4,10 +4,10 @@
     <!-- PUERTA CORREDIZA — reemplaza el video intro, funciona en todos los dispositivos -->
     <div class="gs-puerta" :class="{ 'door-open': doorOpen, [`phase-${phase}`]: true }">
       <div class="gs-puerta-panel gs-puerta-izq">
-        <img src="https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/Puerta/Izquierda.png" alt="" draggable="false" />
+        <img src="https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/Imagenes/GaussianSplattingSection/Prueba%20corrediza/Izquierda.png" alt="" draggable="false" />
       </div>
       <div class="gs-puerta-panel gs-puerta-der">
-        <img src="https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/Puerta/Derecha.png" alt="" draggable="false" />
+        <img src="https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/Imagenes/GaussianSplattingSection/Prueba%20corrediza/Derecha.png" alt="" draggable="false" />
       </div>
     </div>
 
