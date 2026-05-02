@@ -1240,11 +1240,10 @@ const close3d = () => { show3d.value = false; cancelAnimationFrame(fAnimId); if 
 
 /* Glass */
 .glass-card {
-  background: rgba(6, 16, 36, 0.22);
-  backdrop-filter: blur(40px);
-  -webkit-backdrop-filter: blur(40px);
-  border: 1px solid rgba(122, 180, 212, 0.10);
-  filter: brightness(0.82);
+  background: rgba(4, 10, 24, 0.72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(122, 180, 212, 0.12);
 }
 
 /* ── INFO card ─────────────────────────────────────────── */
@@ -1557,7 +1556,7 @@ const close3d = () => { show3d.value = false; cancelAnimationFrame(fAnimId); if 
   /* "Boutique" y amenidades van en columna para no comprimirse */
   .loc-subtitle-row { flex-direction: column; gap: 3px; }
   .loc-subtitle     { font-size: 14px; letter-spacing: 0.22em; }
-  .loc-amenities    { font-size: 9.5px; letter-spacing: 0.09em; flex-direction: column; gap: 2px; }
+  .loc-amenities    { font-size: 9.5px; letter-spacing: 0.09em; display: flex; flex-direction: column; flex-wrap: nowrap; align-items: flex-start; gap: 3px; }
   .amen-dot         { display: none; }
 
   /* ── Header row → columna ── */
