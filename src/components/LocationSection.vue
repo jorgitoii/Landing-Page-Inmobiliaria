@@ -1272,7 +1272,7 @@ const close3d = () => { show3d.value = false; cancelAnimationFrame(fAnimId); if 
   font-family: var(--font-serif); font-size: 11px; font-weight: 300;
   letter-spacing: 0.15em; color: rgba(200,225,240,0.55);
   display: flex; flex-wrap: wrap; align-items: center; gap: 0;
-  max-width: 100%;
+  max-width: 100%; min-width: 0;
 }
 .amen-dot { opacity: 0.5; }
 .loc-rule {
@@ -1358,7 +1358,7 @@ const close3d = () => { show3d.value = false; cancelAnimationFrame(fAnimId); if 
   align-items: flex-start;
   margin-bottom: 2px;
 }
-.loc-header-left { flex: 0 0 auto; }
+.loc-header-left { flex: 0 0 auto; max-width: 44%; min-width: 0; }
 .loc-header-right {
   flex: 1;
   display: flex; flex-direction: column; gap: 10px;
