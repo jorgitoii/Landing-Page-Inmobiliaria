@@ -9,13 +9,22 @@
     <video
       ref="introVideo"
       class="gs-intro-video"
-      :class="`phase-${phase}`"
+      :class="[`phase-${phase}`, { 'gs-video-src': isIOS }]"
       src="https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/Video/Gaussian_video.webm"
       muted playsinline preload="auto"
       @timeupdate="onVideoTimeUpdate"
       @ended="onVideoEnded"
       @error="onVideoEnded"
+      @playing="onVideoPlaying"
     ></video>
+
+    <!-- iOS: canvas WebGL chroma key — reemplaza la transparencia del video -->
+    <canvas
+      v-if="isIOS"
+      ref="chromaCanvas"
+      class="gs-intro-video gs-chroma-canvas"
+      :class="`phase-${phase}`"
+    />
 
     <!-- PANEL: discovery mode selection -->
     <Transition name="gsfade">
@@ -246,6 +255,17 @@ const progress  = ref(0)
 const isPanned  = ref(false)
 
 const isMobile   = ref(typeof window !== 'undefined' && navigator.maxTouchPoints > 0)
+const isIOS      = typeof navigator !== 'undefined' &&
+                   /iPad|iPhone|iPod/.test(navigator.userAgent) &&
+                   typeof window !== 'undefined' && !('MSStream' in window)
+
+// ── iOS WebGL chroma key ─────────────────────────────────────────────────────
+// Elimina el fondo de croma del video en GPU (WebM alpha no soportado en iOS)
+// Ajusta CHROMA_* si el color de fondo no es verde puro
+const chromaCanvas = ref(null)
+let ckGl = null, ckProgram = null, ckTex = null, ckRaf = null
+const CHROMA_R = 0.0, CHROMA_G = 1.0, CHROMA_B = 0.0   // verde puro — cambiar si aplica
+const CHROMA_THRESH = 0.38   // tolerancia: subir si quedan bordes verdes, bajar si recorta de más
 
 const MODE_MOUSE = 'mouse'
 const MODE_FACE  = 'face'
@@ -367,6 +387,94 @@ const exitViewer = () => {
 
 onUnmounted(() => teardown())
 
+/* ========================================================
+   iOS CHROMA KEY — WebGL shader elimina el fondo de croma
+   ======================================================== */
+function onVideoPlaying () {
+  if (isIOS && chromaCanvas.value && !ckGl) initChromaKey()
+}
+
+function initChromaKey () {
+  const canvas = chromaCanvas.value
+  const video  = introVideo.value
+  if (!canvas || !video) return
+
+  canvas.width  = video.videoWidth  || window.innerWidth
+  canvas.height = video.videoHeight || window.innerHeight
+
+  ckGl = canvas.getContext('webgl', { alpha: true, premultipliedAlpha: false })
+  if (!ckGl) return
+  const gl = ckGl
+
+  const VS = `
+    attribute vec2 a_pos;
+    varying vec2 v_uv;
+    void main(){
+      gl_Position = vec4(a_pos, 0.0, 1.0);
+      v_uv = vec2((a_pos.x + 1.0) * 0.5, (1.0 - a_pos.y) * 0.5);
+    }`
+
+  const FS = `
+    precision mediump float;
+    uniform sampler2D u_tex;
+    uniform vec3 u_chroma;
+    uniform float u_thresh;
+    varying vec2 v_uv;
+    void main(){
+      vec4 c = texture2D(u_tex, v_uv);
+      float d = distance(c.rgb, u_chroma);
+      if (d < u_thresh) discard;
+      float a = smoothstep(u_thresh, u_thresh * 1.6, d);
+      gl_FragColor = vec4(c.rgb, a);
+    }`
+
+  const compile = (type, src) => {
+    const s = gl.createShader(type)
+    gl.shaderSource(s, src); gl.compileShader(s); return s
+  }
+  ckProgram = gl.createProgram()
+  gl.attachShader(ckProgram, compile(gl.VERTEX_SHADER,   VS))
+  gl.attachShader(ckProgram, compile(gl.FRAGMENT_SHADER, FS))
+  gl.linkProgram(ckProgram)
+  gl.useProgram(ckProgram)
+
+  const buf = gl.createBuffer()
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf)
+  gl.bufferData(gl.ARRAY_BUFFER,
+    new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW)
+  const aPos = gl.getAttribLocation(ckProgram, 'a_pos')
+  gl.enableVertexAttribArray(aPos)
+  gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0)
+
+  gl.uniform3f(gl.getUniformLocation(ckProgram, 'u_chroma'), CHROMA_R, CHROMA_G, CHROMA_B)
+  gl.uniform1f(gl.getUniformLocation(ckProgram, 'u_thresh'), CHROMA_THRESH)
+
+  ckTex = gl.createTexture()
+  gl.bindTexture(gl.TEXTURE_2D, ckTex)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+  gl.enable(gl.BLEND)
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+
+  const render = () => {
+    if (phase.value !== 'intro' || !ckGl) { ckRaf = null; return }
+    ckRaf = requestAnimationFrame(render)
+    if (video.readyState < 2) return
+    gl.bindTexture(gl.TEXTURE_2D, ckTex)
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, video)
+    gl.viewport(0, 0, canvas.width, canvas.height)
+    gl.clear(gl.COLOR_BUFFER_BIT)
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
+  }
+  render()
+}
+
+function cleanupChromaKey () {
+  if (ckRaf) { cancelAnimationFrame(ckRaf); ckRaf = null }
+  ckGl = null; ckProgram = null; ckTex = null
+}
+
 function teardown () {
   cancelAnimationFrame(rafId)
   cancelAnimationFrame(faceRafId)
@@ -382,6 +490,7 @@ function teardown () {
   // Opt 1 & 2: disconnect IntersectionObservers
   if (sectionIO) { sectionIO.disconnect(); sectionIO = null }
   if (videoIO)   { videoIO.disconnect();   videoIO   = null }
+  cleanupChromaKey()
   gl = null; program = null; vao = null; splatCount = 0
 }
 
@@ -772,6 +881,12 @@ function loadScript (src) {
   object-fit: cover;
   display: block;
 }
+
+/* iOS: video fuente invisible (sigue reproduciéndose para el canvas WebGL) */
+.gs-video-src { opacity: 0 !important; }
+
+/* iOS chroma canvas — hereda todos los estilos de .gs-intro-video */
+.gs-chroma-canvas { background: transparent; }
 
 /* Fase intro: encima de todo, reproduce */
 .gs-intro-video.phase-intro {
