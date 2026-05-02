@@ -1,30 +1,15 @@
 <template>
   <section class="gs-section" id="gaussian" ref="sectionEl">
 
-    <!-- VIDEO — siempre en DOM, controlado por fase:
-         intro  → reproduce a pantalla completa (z alta)
-         panel  → último frame congelado de fondo
-         viewer → último frame congelado encima del canvas (marco)
-         Sin autoplay: arranca cuando el usuario llega al 38% de la sección -->
-    <video
-      ref="introVideo"
-      class="gs-intro-video"
-      :class="[`phase-${phase}`, { 'gs-video-src': isIOS }]"
-      src="https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/Video/Gaussian_video.webm"
-      muted playsinline preload="auto"
-      @timeupdate="onVideoTimeUpdate"
-      @ended="onVideoEnded"
-      @error="onVideoEnded"
-      @playing="onVideoPlaying"
-    ></video>
-
-    <!-- iOS: canvas WebGL chroma key — reemplaza la transparencia del video -->
-    <canvas
-      v-if="isIOS"
-      ref="chromaCanvas"
-      class="gs-intro-video gs-chroma-canvas"
-      :class="`phase-${phase}`"
-    />
+    <!-- PUERTA CORREDIZA — reemplaza el video intro, funciona en todos los dispositivos -->
+    <div class="gs-puerta" :class="{ 'door-open': doorOpen, [`phase-${phase}`]: true }">
+      <div class="gs-puerta-panel gs-puerta-izq">
+        <img src="/assets/Puerta/Izquierda.png" alt="" draggable="false" />
+      </div>
+      <div class="gs-puerta-panel gs-puerta-der">
+        <img src="/assets/Puerta/Derecha.png" alt="" draggable="false" />
+      </div>
+    </div>
 
     <!-- PANEL: discovery mode selection -->
     <Transition name="gsfade">
@@ -174,21 +159,29 @@ import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 const phase       = ref('intro')   // intro | panel | viewer
 const sectionEl   = ref(null)
 const discoveryOp = ref(1)
-const introVideo = ref(null)
-let   introFallbackTimer = null
-let   videoStarted = false        // evita arrancar el video más de una vez
+const doorOpen    = ref(false)
 
-// Arranca el video — se llama solo cuando scroll llega al 38%
-function startVideo () {
-  if (videoStarted) return
-  videoStarted = true
+// Puerta corrediza — config final
+const DOOR_DELAY    = 400    // ms antes de abrir
+const DOOR_DURATION = 4000   // ms de la transición
+
+let doorStarted  = false
+let doorTimer    = null
+let panelTimer   = null
+
+// Arranca la puerta — se llama cuando scroll llega al 38%
+function startDoor () {
+  if (doorStarted) return
+  doorStarted = true
   window.removeEventListener('scroll', onScrollCheck, { passive: true })
-  const v = introVideo.value
-  if (v) v.play().catch(() => {})
-  // Seguro extra: pasar al panel tras 12 s en caso de fallo total
-  introFallbackTimer = setTimeout(() => {
-    if (phase.value === 'intro') phase.value = 'panel'
-  }, 12000)
+
+  doorTimer = setTimeout(() => {
+    doorOpen.value = true
+    // Tras la animación completa → panel de selección
+    panelTimer = setTimeout(() => {
+      if (phase.value === 'intro') phase.value = 'panel'
+    }, DOOR_DURATION + 200)
+  }, DOOR_DELAY)
 }
 
 // Scroll listener: comprueba si la sección está al ≥38% en pantalla
@@ -196,27 +189,9 @@ const onScrollCheck = () => {
   if (!sectionEl.value) return
   const r  = sectionEl.value.getBoundingClientRect()
   const vh = window.innerHeight
-  // progress = qué fracción de la sección ha entrado en el viewport
   const progress = (vh - r.top) / r.height
-  // Discovery overlay: opacidad 1 → 0 al pisar el 10%
   discoveryOp.value = Math.max(0, 1 - progress / 0.10)
-  if (progress >= 0.38) startVideo()
-}
-
-// Al 55% del video → aparece el panel (video sigue corriendo de fondo)
-const onVideoTimeUpdate = () => {
-  const v = introVideo.value
-  if (!v || !v.duration || phase.value !== 'intro') return
-  if (v.currentTime / v.duration >= 0.55) {
-    if (introFallbackTimer) { clearTimeout(introFallbackTimer); introFallbackTimer = null }
-    phase.value = 'panel'
-  }
-}
-
-// Fallback: si el timeupdate no llega
-const onVideoEnded = () => {
-  if (introFallbackTimer) { clearTimeout(introFallbackTimer); introFallbackTimer = null }
-  if (phase.value === 'intro') phase.value = 'panel'
+  if (progress >= 0.38) startDoor()
 }
 
 onMounted(() => {
@@ -229,17 +204,6 @@ onMounted(() => {
   }, { threshold: 0 })
   sectionIO.observe(sectionEl.value)
 
-  // Opt 2: pause intro video when section leaves viewport
-  videoIO = new IntersectionObserver(([entry]) => {
-    const v = introVideo.value
-    if (!v) return
-    if (!entry.isIntersecting) {
-      v.pause()
-    } else if (videoStarted && phase.value === 'intro') {
-      v.play().catch(() => {})
-    }
-  }, { threshold: 0.01 })
-  videoIO.observe(sectionEl.value)
 })
 
 const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -255,17 +219,6 @@ const progress  = ref(0)
 const isPanned  = ref(false)
 
 const isMobile   = ref(typeof window !== 'undefined' && navigator.maxTouchPoints > 0)
-const isIOS      = typeof navigator !== 'undefined' &&
-                   /iPad|iPhone|iPod/.test(navigator.userAgent) &&
-                   typeof window !== 'undefined' && !('MSStream' in window)
-
-// ── iOS WebGL chroma key ─────────────────────────────────────────────────────
-// Elimina el fondo de croma del video en GPU (WebM alpha no soportado en iOS)
-// Ajusta CHROMA_* si el color de fondo no es verde puro
-const chromaCanvas = ref(null)
-let ckGl = null, ckProgram = null, ckTex = null, ckRaf = null
-const CHROMA_R = 0.0, CHROMA_G = 1.0, CHROMA_B = 0.0   // verde puro — cambiar si aplica
-const CHROMA_THRESH = 0.38   // tolerancia: subir si quedan bordes verdes, bajar si recorta de más
 
 const MODE_MOUSE = 'mouse'
 const MODE_FACE  = 'face'
@@ -298,10 +251,9 @@ const PAN_MAX_FACE = 0.828   // webcam pan (+68% total)
 let   panTargX = 0, panTargY = 0
 let   panCurrX = 0, panCurrY = 0
 
-// Opt 1 & 2: IntersectionObservers
+// Opt 1: IntersectionObserver — pausa render loop cuando está fuera de pantalla
 let renderPaused = false
-let sectionIO    = null   // pauses WebGL render loop when off-screen
-let videoIO      = null   // pauses intro video when off-screen
+let sectionIO    = null
 
 // WebGL2 state
 let gl = null, program = null, vao = null, splatCount = 0, rafId = null
@@ -387,94 +339,6 @@ const exitViewer = () => {
 
 onUnmounted(() => teardown())
 
-/* ========================================================
-   iOS CHROMA KEY — WebGL shader elimina el fondo de croma
-   ======================================================== */
-function onVideoPlaying () {
-  if (isIOS && chromaCanvas.value && !ckGl) initChromaKey()
-}
-
-function initChromaKey () {
-  const canvas = chromaCanvas.value
-  const video  = introVideo.value
-  if (!canvas || !video) return
-
-  canvas.width  = video.videoWidth  || window.innerWidth
-  canvas.height = video.videoHeight || window.innerHeight
-
-  ckGl = canvas.getContext('webgl', { alpha: true, premultipliedAlpha: false })
-  if (!ckGl) return
-  const gl = ckGl
-
-  const VS = `
-    attribute vec2 a_pos;
-    varying vec2 v_uv;
-    void main(){
-      gl_Position = vec4(a_pos, 0.0, 1.0);
-      v_uv = vec2((a_pos.x + 1.0) * 0.5, (1.0 - a_pos.y) * 0.5);
-    }`
-
-  const FS = `
-    precision mediump float;
-    uniform sampler2D u_tex;
-    uniform vec3 u_chroma;
-    uniform float u_thresh;
-    varying vec2 v_uv;
-    void main(){
-      vec4 c = texture2D(u_tex, v_uv);
-      float d = distance(c.rgb, u_chroma);
-      if (d < u_thresh) discard;
-      float a = smoothstep(u_thresh, u_thresh * 1.6, d);
-      gl_FragColor = vec4(c.rgb, a);
-    }`
-
-  const compile = (type, src) => {
-    const s = gl.createShader(type)
-    gl.shaderSource(s, src); gl.compileShader(s); return s
-  }
-  ckProgram = gl.createProgram()
-  gl.attachShader(ckProgram, compile(gl.VERTEX_SHADER,   VS))
-  gl.attachShader(ckProgram, compile(gl.FRAGMENT_SHADER, FS))
-  gl.linkProgram(ckProgram)
-  gl.useProgram(ckProgram)
-
-  const buf = gl.createBuffer()
-  gl.bindBuffer(gl.ARRAY_BUFFER, buf)
-  gl.bufferData(gl.ARRAY_BUFFER,
-    new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW)
-  const aPos = gl.getAttribLocation(ckProgram, 'a_pos')
-  gl.enableVertexAttribArray(aPos)
-  gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0)
-
-  gl.uniform3f(gl.getUniformLocation(ckProgram, 'u_chroma'), CHROMA_R, CHROMA_G, CHROMA_B)
-  gl.uniform1f(gl.getUniformLocation(ckProgram, 'u_thresh'), CHROMA_THRESH)
-
-  ckTex = gl.createTexture()
-  gl.bindTexture(gl.TEXTURE_2D, ckTex)
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-  gl.enable(gl.BLEND)
-  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-
-  const render = () => {
-    if (phase.value !== 'intro' || !ckGl) { ckRaf = null; return }
-    ckRaf = requestAnimationFrame(render)
-    if (video.readyState < 2) return
-    gl.bindTexture(gl.TEXTURE_2D, ckTex)
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, video)
-    gl.viewport(0, 0, canvas.width, canvas.height)
-    gl.clear(gl.COLOR_BUFFER_BIT)
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
-  }
-  render()
-}
-
-function cleanupChromaKey () {
-  if (ckRaf) { cancelAnimationFrame(ckRaf); ckRaf = null }
-  ckGl = null; ckProgram = null; ckTex = null
-}
-
 function teardown () {
   cancelAnimationFrame(rafId)
   cancelAnimationFrame(faceRafId)
@@ -486,11 +350,10 @@ function teardown () {
   if (touchStartHdl) { gsCanvas.value?.removeEventListener('touchstart', touchStartHdl); touchStartHdl = null }
   if (touchMoveHdl)  { gsCanvas.value?.removeEventListener('touchmove',  touchMoveHdl);  touchMoveHdl  = null }
   gyroRef = null
-  if (introFallbackTimer) { clearTimeout(introFallbackTimer); introFallbackTimer = null }
-  // Opt 1 & 2: disconnect IntersectionObservers
+  if (doorTimer)  { clearTimeout(doorTimer);  doorTimer  = null }
+  if (panelTimer) { clearTimeout(panelTimer); panelTimer = null }
+  // Opt 1: disconnect IntersectionObserver
   if (sectionIO) { sectionIO.disconnect(); sectionIO = null }
-  if (videoIO)   { videoIO.disconnect();   videoIO   = null }
-  cleanupChromaKey()
   gl = null; program = null; vao = null; splatCount = 0
 }
 
@@ -872,41 +735,36 @@ function loadScript (src) {
 .gsfade-enter-active, .gsfade-leave-active { transition: opacity 0.9s ease; }
 .gsfade-enter-from, .gsfade-leave-to       { opacity: 0; }
 
-/* ── VIDEO DE INTRODUCCIÓN ────────────────────────────────
-   Siempre en DOM. Tres estados según la fase.
-   ──────────────────────────────────────────────────────── */
-.gs-intro-video {
+/* ── PUERTA CORREDIZA ─────────────────────────────────── */
+.gs-puerta {
   position: absolute; inset: 0;
+  display: flex;
+  pointer-events: none;
+}
+
+.gs-puerta.phase-intro  { z-index: 8; }
+.gs-puerta.phase-panel  { z-index: 2; }
+.gs-puerta.phase-viewer { z-index: 0; opacity: 0; }
+
+.gs-puerta-panel {
+  width: 50%; height: 100%;
+  overflow: hidden;
+  flex-shrink: 0;
+  transition: transform 4000ms cubic-bezier(0.77, 0, 0.6, 1);
+}
+
+.gs-puerta-panel img {
   width: 100%; height: 100%;
   object-fit: cover;
   display: block;
+  user-select: none;
 }
 
-/* iOS: video fuente invisible (sigue reproduciéndose para el canvas WebGL) */
-.gs-video-src { opacity: 0 !important; }
+.gs-puerta-izq img { object-position: right center; }
+.gs-puerta-der img { object-position: left center; }
 
-/* iOS chroma canvas — hereda todos los estilos de .gs-intro-video */
-.gs-chroma-canvas { background: transparent; }
-
-/* Fase intro: encima de todo, reproduce */
-.gs-intro-video.phase-intro {
-  z-index: 8;
-  pointer-events: none;
-}
-
-/* Fase panel: último frame visible como fondo/marco detrás del panel de selección */
-.gs-intro-video.phase-panel {
-  z-index: 2;
-  pointer-events: none;
-}
-
-/* Fase viewer: último frame congelado ENCIMA del canvas pero DEBAJO
-   de los controles (.gs-back z-10, .gs-home z-10, .gs-center-hint z-10).
-   pointer-events: none → los clics siguen llegando al canvas */
-.gs-intro-video.phase-viewer {
-  z-index: 2;
-  pointer-events: none;
-}
+.door-open .gs-puerta-izq { transform: translateX(-70%); }
+.door-open .gs-puerta-der { transform: translateX( 70%); }
 
 /* ── PANEL ── */
 .gs-panel {
@@ -1075,4 +933,4 @@ function loadScript (src) {
   .gs-back-btn     { font-size: 10px; padding: 9px 18px; }
 }
 </style>
-         
+                                                                                                                                                                       

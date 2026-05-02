@@ -24,13 +24,16 @@
         <div class="ornament" :class="{ visible: inView }" :style="{ transitionDelay: `${i * 0.25}s` }"></div>
 
         <div class="scroll-video-wrap">
-          <!-- Video pergamino -->
-          <video
-            :ref="el => { if (el) videoEls[i] = el }"
-            src="https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/Video/Pergamino.webm"
-            muted playsinline preload="auto"
-            class="scroll-video"
-          ></video>
+          <!-- Pergamino CSS/JS — reemplaza el video -->
+          <div class="pergamino-anim" :ref="el => { if (el) pergaminoEls[i] = el }">
+            <img
+              class="pergamino-img"
+              src="/assets/Imagenes/PricingSection/Pergamino/Pergamino desplegado.png"
+              alt="Pergamino"
+              draggable="false"
+            />
+            <div class="pergamino-palo"></div>
+          </div>
 
           <!-- Texto superpuesto sobre el pergamino -->
           <div
@@ -99,11 +102,48 @@ const SUITES = [
 ]
 
 // ── Refs ─────────────────────────────────────────────────
-const sectionRef = ref(null)
-const videoEls   = []
-const dustEls    = []
-const inView     = ref(false)
-const discOp     = ref(1)
+const sectionRef   = ref(null)
+const pergaminoEls = []
+const dustEls      = []
+const inView       = ref(false)
+const discOp       = ref(1)
+
+// ── Animación pergamino (CSS clip-path + palo) ───────────
+const PERG_DURATION  = 3500
+const PERG_BASE_DELAY = 800
+
+function easeInOutCubic (t) {
+  return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3) / 2
+}
+
+function animatePergamino (container, extraDelay = 0) {
+  const img  = container.querySelector('.pergamino-img')
+  const palo = container.querySelector('.pergamino-palo')
+  if (!img || !palo) return
+
+  const pgH = container.offsetHeight
+  img.style.clipPath      = 'inset(0 0 100% 0)'
+  palo.style.transform    = 'translateY(0px)'
+
+  const totalDelay = PERG_BASE_DELAY + extraDelay
+  let startTime = null
+
+  function frame (ts) {
+    if (!startTime) startTime = ts
+    const elapsed = ts - startTime - totalDelay
+    if (elapsed < 0) { requestAnimationFrame(frame); return }
+
+    const t    = Math.min(1, elapsed / PERG_DURATION)
+    const e    = easeInOutCubic(t)
+    const clipB = (1 - e) * 100
+    img.style.clipPath       = `inset(0 0 ${clipB.toFixed(2)}% 0)`
+    palo.style.transform     = `translateY(${(e * (pgH - 10)).toFixed(2)}px)`
+
+    if (t < 1) requestAnimationFrame(frame)
+  }
+
+  requestAnimationFrame(frame)
+}
 
 // ── Discovery overlay — igual que otras secciones ────────
 function onScroll () {
@@ -138,9 +178,9 @@ onMounted(() => {
     entries.forEach(e => {
       if (!inView.value && e.intersectionRatio >= 0.25) {
         inView.value = true
-        videoEls.forEach((v, i) => {
-          if (!v) return
-          setTimeout(() => { v.currentTime = 0; v.play().catch(() => {}) }, i * 320)
+        pergaminoEls.forEach((el, i) => {
+          if (!el) return
+          animatePergamino(el, i * 400)
         })
         io.disconnect()
       }
@@ -271,21 +311,52 @@ onUnmounted(() => {
 }
 .ornament.visible { opacity: 1; }
 
-/* ── Video pergamino ─────────────────────────────────── */
+/* ── Pergamino animado ───────────────────────────────── */
 .scroll-video-wrap {
   position: relative;
   width: 100%;
   aspect-ratio: 9 / 14;
-  overflow: hidden;
+  overflow: visible;
   border-radius: 4px;
 }
 
-.scroll-video {
+.pergamino-anim {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.pergamino-img {
   width: 100%;
   height: 100%;
   object-fit: fill;
   display: block;
-  transform: scaleX(1.18);
+  clip-path: inset(0 0 100% 0);
+  filter: contrast(1.1) saturate(0.9);
+  position: relative;
+  z-index: 1;
+}
+
+/* Palo de madera oscura que acompaña el despliegue */
+.pergamino-palo {
+  position: absolute;
+  top: 0;
+  left: -10px;
+  right: -10px;
+  height: 6px;
+  border-radius: 1px;
+  z-index: 0;
+  background: linear-gradient(
+    to bottom,
+    #5c3010 0%,
+    #3d1a05 40%,
+    #0d0500 60%,
+    #3d1a05 100%
+  );
+  box-shadow:
+    0 4px 16px rgba(0,0,0,0.8),
+    inset 0 1px 2px rgba(120,70,30,0.35),
+    inset 0 -1px 2px rgba(0,0,0,0.6);
 }
 
 /* ── Texto sobre el pergamino ────────────────────────── */
