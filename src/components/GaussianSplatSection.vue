@@ -246,8 +246,8 @@ const EX0 = 0.02762, EY0 = 0.05633, EZ0 =  0.25450  // base camera eye
 
 // Pan mode (replaces old parallax)
 const LERP    = 0.115
-const PAN_MAX      = 0.095   // mouse pan  (+40%)
-const PAN_MAX_FACE = 0.690   // webcam pan (+40%)
+const PAN_MAX      = 0.114   // mouse pan  (+68% total)
+const PAN_MAX_FACE = 0.828   // webcam pan (+68% total)
 let   panTargX = 0, panTargY = 0
 let   panCurrX = 0, panCurrY = 0
 
