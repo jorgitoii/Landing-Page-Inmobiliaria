@@ -21,9 +21,9 @@
         <a href="#" @click.prevent="scrollTo('inicio')">Inicio</a>
         <a href="#" @click.prevent="scrollTo('arquitectos')">Arquitectos</a>
         <a href="#" @click.prevent="scrollTo('location')">Ubicación</a>
-        <a href="#" @click.prevent="scrollTo('gaussian')">Modelo 3D</a>
         <a href="#" @click.prevent="scrollTo('restaurante')">Restaurante</a>
         <a href="#" @click.prevent="scrollTo('tarifas')">Tarifas</a>
+        <a href="#" @click.prevent="scrollTo('gaussian')">Modelo 3D</a>
         <a href="#" @click.prevent="openGallery">Galería</a>
         <a href="#" @click.prevent="scrollTo('contact')" class="nav-contact">Contacto</a>
       </nav>
@@ -40,9 +40,9 @@
         <a href="#" @click.prevent="nav('inicio')">Inicio</a>
         <a href="#" @click.prevent="nav('arquitectos')">Arquitectos</a>
         <a href="#" @click.prevent="nav('location')">Ubicación</a>
-        <a href="#" @click.prevent="nav('gaussian')">Modelo 3D</a>
         <a href="#" @click.prevent="nav('restaurante')">Restaurante</a>
         <a href="#" @click.prevent="nav('tarifas')">Tarifas</a>
+        <a href="#" @click.prevent="nav('gaussian')">Modelo 3D</a>
         <a href="#" @click.prevent="navGallery">Galería</a>
         <a href="#" @click.prevent="nav('contact')" class="nav-contact">Contacto</a>
       </nav>

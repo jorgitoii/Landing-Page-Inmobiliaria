@@ -147,6 +147,15 @@
   </section>
 </template>
 
+<script>
+// ── Opt 5: Module-level PLY cache ───────────────────────────────────────────
+// Variables live at ES-module scope → survive viewer exit/re-entry in same page session
+let _cachedSPos = null   // Float32Array N*3 sorted positions
+let _cachedSCol = null   // Float32Array N*4 sorted colors (decoded)
+let _cachedSSz  = null   // Float32Array N   sorted sizes
+let _cachedN    = 0
+</script>
+
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 
@@ -204,6 +213,24 @@ const onVideoEnded = () => {
 onMounted(() => {
   window.addEventListener('scroll', onScrollCheck, { passive: true })
   onScrollCheck()   // por si la sección ya está en pantalla al cargar
+
+  // Opt 1: pause WebGL render loop when section is fully off-screen
+  sectionIO = new IntersectionObserver(([entry]) => {
+    renderPaused = !entry.isIntersecting
+  }, { threshold: 0 })
+  sectionIO.observe(sectionEl.value)
+
+  // Opt 2: pause intro video when section leaves viewport
+  videoIO = new IntersectionObserver(([entry]) => {
+    const v = introVideo.value
+    if (!v) return
+    if (!entry.isIntersecting) {
+      v.pause()
+    } else if (videoStarted && phase.value === 'intro') {
+      v.play().catch(() => {})
+    }
+  }, { threshold: 0.01 })
+  videoIO.observe(sectionEl.value)
 })
 
 const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -251,6 +278,11 @@ const PAN_MAX_FACE = 0.828   // webcam pan (+68% total)
 let   panTargX = 0, panTargY = 0
 let   panCurrX = 0, panCurrY = 0
 
+// Opt 1 & 2: IntersectionObservers
+let renderPaused = false
+let sectionIO    = null   // pauses WebGL render loop when off-screen
+let videoIO      = null   // pauses intro video when off-screen
+
 // WebGL2 state
 let gl = null, program = null, vao = null, splatCount = 0, rafId = null
 let uProj, uView, uProjY, uAspect, uSizeMult, uBscale, uOpMult, uBscale2
@@ -273,11 +305,11 @@ const startViewer = async (mode) => {
   await nextTick()
   await nextTick()
   initGL()
-  loadPLY()
   if      (mode === 'gyro')  setupGyro()
   else if (mode === 'face')  setupFaceTracking()
   else if (mode === 'touch') setupTouch()
   else                       setupMouse()
+  loadSPLAT()
 }
 
 /* ========================================================
@@ -347,6 +379,9 @@ function teardown () {
   if (touchMoveHdl)  { gsCanvas.value?.removeEventListener('touchmove',  touchMoveHdl);  touchMoveHdl  = null }
   gyroRef = null
   if (introFallbackTimer) { clearTimeout(introFallbackTimer); introFallbackTimer = null }
+  // Opt 1 & 2: disconnect IntersectionObservers
+  if (sectionIO) { sectionIO.disconnect(); sectionIO = null }
+  if (videoIO)   { videoIO.disconnect();   videoIO   = null }
   gl = null; program = null; vao = null; splatCount = 0
 }
 
@@ -479,14 +514,28 @@ function makeLookAt (ex, ey, ez, tx, ty, tz) {
 }
 
 /* ========================================================
-   PLY LOADER  (raw — POINT_SC / OP_MULT / bscale live as uniforms)
+   SPLAT LOADER  (formato binario pre-procesado — sin parsing ni sort)
    ======================================================== */
-async function loadPLY () {
-  loading.value  = true
-  loadLabel.value = 'Descargando escena...'
-  progress.value  = 0
+async function loadSPLAT () {
+  loading.value = true
+  progress.value = 0
 
-  const url  = 'https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/3D/Guassian/Table.ply'
+  // Opt 5: caché de sesión — skip total si ya se descargó antes
+  if (_cachedN > 0) {
+    loadLabel.value = 'Cargando desde caché...'
+    progress.value  = 96
+    await new Promise(r => setTimeout(r, 0))
+    if (!gl) return
+    buildVAO(_cachedSPos, _cachedSCol, _cachedSSz)
+    splatCount = _cachedN
+    progress.value = 100
+    loading.value  = false
+    startRender()
+    return
+  }
+
+  loadLabel.value = 'Descargando escena...'
+  const url  = 'https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/3D/Guassian/Table.splat'
   const resp = await fetch(url)
   if (!resp.ok) { loadLabel.value = 'Error ' + resp.status; return }
 
@@ -497,88 +546,37 @@ async function loadPLY () {
     const { done, value } = await reader.read()
     if (done) break
     chunks.push(value); received += value.length
-    if (total) progress.value = Math.round(received / total * 40)
+    if (total) progress.value = Math.round(received / total * 80)
   }
 
-  loadLabel.value = 'Procesando...'; progress.value = 45
+  loadLabel.value = 'Preparando GPU...'; progress.value = 85
   await new Promise(r => setTimeout(r, 0))
 
-  const ab  = new ArrayBuffer(received)
-  const arr = new Uint8Array(ab)
-  let off = 0
-  for (const c of chunks) { arr.set(c, off); off += c.length }
+  // Ensamblar buffer contiguo
+  const ab = new ArrayBuffer(received)
+  const u8 = new Uint8Array(ab)
+  let off = 0; for (const c of chunks) { u8.set(c, off); off += c.length }
 
-  const peek    = new TextDecoder('ascii').decode(arr.slice(0, Math.min(arr.length, 8192)))
-  const endMark = peek.indexOf('end_header')
-  if (endMark === -1) { loadLabel.value = 'Error: header PLY'; return }
-  let hdrBytes = endMark + 10
-  if (arr[hdrBytes] === 13) hdrBytes++
-  if (arr[hdrBytes] === 10) hdrBytes++
+  // Validar magic "SPLT"
+  const magic = String.fromCharCode(u8[0], u8[1], u8[2], u8[3])
+  if (magic !== 'SPLT') { loadLabel.value = 'Error: formato inválido'; return }
 
-  const nm = peek.match(/element vertex (\d+)/)
-  if (!nm) { loadLabel.value = 'Error: PLY inválido'; return }
-  const N = parseInt(nm[1])
+  const N = new DataView(ab).getUint32(4, true)
+  let cursor = 8
+  const sPos = new Float32Array(ab, cursor, N * 3); cursor += N * 3 * 4
+  const sCol = new Float32Array(ab, cursor, N * 4); cursor += N * 4 * 4
+  const sSz  = new Float32Array(ab, cursor, N)
 
-  const STRIDE = 14
-  const SH_C0  = 0.28209479
+  if (!gl) return
 
-  const binaryLen = N * STRIDE * 4
-  const aligned   = new ArrayBuffer(binaryLen)
-  new Uint8Array(aligned).set(new Uint8Array(ab, hdrBytes, binaryLen))
-  const data = new Float32Array(aligned)
+  // Opt 5: guardar en caché de módulo
+  _cachedSPos = sPos
+  _cachedSCol = sCol
+  _cachedSSz  = sSz
+  _cachedN    = N
 
-  progress.value = 55
-
-  // Decode — scene rotation (x,y,z) → (x,-y,-z)
-  // Raw: no POINT_SC or OP_MULT baked in → they live as shader uniforms
-  const posArr = new Float32Array(N * 3)
-  const colArr = new Float32Array(N * 4)
-  const szArr  = new Float32Array(N)
-  for (let i = 0; i < N; i++) {
-    const b = i * STRIDE
-    posArr[i*3]   =  data[b]
-    posArr[i*3+1] = -data[b+1]
-    posArr[i*3+2] = -data[b+2]
-    colArr[i*4]   = Math.min(1, Math.max(0, SH_C0 * data[b+3] + 0.5))
-    colArr[i*4+1] = Math.min(1, Math.max(0, SH_C0 * data[b+4] + 0.5))
-    colArr[i*4+2] = Math.min(1, Math.max(0, SH_C0 * data[b+5] + 0.5))
-    colArr[i*4+3] = Math.min(1, 1 / (1 + Math.exp(-data[b+6])))  // raw sigmoid, no OP_MULT
-    const s0 = Math.exp(data[b+7]), s1 = Math.exp(data[b+8]), s2 = Math.exp(data[b+9])
-    szArr[i] = Math.max(s0, s1, s2) * 2.0   // 2σ radius — no POINT_SC baked
-  }
-
-  progress.value = 68; loadLabel.value = 'Ordenando...'
-  await new Promise(r => setTimeout(r, 0))
-
-  // Back-to-front sort using base camera view matrix
-  const viewMat = makeLookAt(EX0, EY0, EZ0, TX0, TY0, TZ0)
-  const dep = new Float32Array(N)
-  for (let i = 0; i < N; i++) {
-    const x = posArr[i*3], y = posArr[i*3+1], z = posArr[i*3+2]
-    dep[i] = viewMat[2]*x + viewMat[6]*y + viewMat[10]*z + viewMat[14]
-  }
-  const idx = new Uint32Array(N)
-  for (let i = 0; i < N; i++) idx[i] = i
-  idx.sort((a, b) => dep[a] - dep[b])
-
-  progress.value = 84; loadLabel.value = 'Preparando GPU...'
-  await new Promise(r => setTimeout(r, 0))
-
-  const sPos = new Float32Array(N * 3)
-  const sCol = new Float32Array(N * 4)
-  const sSz  = new Float32Array(N)
-  for (let j = 0; j < N; j++) {
-    const i = idx[j]
-    sPos[j*3]   = posArr[i*3];   sPos[j*3+1] = posArr[i*3+1]; sPos[j*3+2] = posArr[i*3+2]
-    sCol[j*4]   = colArr[i*4];   sCol[j*4+1] = colArr[i*4+1]
-    sCol[j*4+2] = colArr[i*4+2]; sCol[j*4+3] = colArr[i*4+3]
-    sSz[j] = szArr[i]
-  }
-
-  if (!gl) return   // viewer was closed during load
   buildVAO(sPos, sCol, sSz)
   splatCount = N
-
   progress.value = 100
   loading.value  = false
   startRender()
@@ -634,6 +632,7 @@ function startRender () {
 
   const loop = () => {
     rafId = requestAnimationFrame(loop)
+    if (renderPaused) return               // Opt 1: off-screen → skip frame
     if (!gl || !vao || splatCount === 0) return
 
     const canvas = gsCanvas.value

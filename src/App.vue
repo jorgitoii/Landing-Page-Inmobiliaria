@@ -4,9 +4,9 @@
     <HeroSection />
     <ArchitectsSection />
     <LocationSection />
-    <GaussianSplatSection />
     <RestaurantSection />
     <PricingSection />
+    <GaussianSplatSection />
     <GalleryModal />
     <SiteFooter />
   </div>
