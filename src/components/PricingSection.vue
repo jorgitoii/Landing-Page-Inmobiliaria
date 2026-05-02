@@ -28,7 +28,7 @@
           <div class="pergamino-anim" :ref="el => { if (el) pergaminoEls[i] = el }">
             <img
               class="pergamino-img"
-              src="/assets/Imagenes/PricingSection/Pergamino/Pergamino desplegado.png"
+              src="https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/Imagenes/PricingSection/Pergamino/Pergamino desplegado.png"
               alt="Pergamino"
               draggable="false"
             />
