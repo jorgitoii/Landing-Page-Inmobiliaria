@@ -151,6 +151,17 @@
             <div class="canvas-scroll-strip canvas-scroll-strip--left"></div>
             <div class="canvas-scroll-strip canvas-scroll-strip--right"></div>
 
+            <!-- Loading overlay -->
+            <Transition name="model-load-fade">
+              <div v-if="modelProgress > 0 && modelProgress < 100" class="model-loading-overlay">
+                <p class="model-loading-label">Cargando modelo</p>
+                <div class="model-loading-bar-wrap">
+                  <div class="model-loading-bar" :style="{ width: modelProgress + '%' }"></div>
+                </div>
+                <p class="model-loading-pct">{{ modelProgress }}%</p>
+              </div>
+            </Transition>
+
             <!-- Brújula clásica — rota con la cámara -->
             <div class="compass-wrap">
               <svg class="compass-svg" viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg">
@@ -1563,6 +1574,37 @@ const close3d = () => { show3d.value = false; cancelAnimationFrame(fAnimId); if 
 }
 .model-wrap { flex: 1; min-height: 480px; position: relative; overflow: hidden; }
 .model-wrap canvas { width: 100%; height: 100%; display: block; }
+
+/* ── GLB loading overlay ── */
+.model-loading-overlay {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 12px;
+  background: rgba(6, 14, 28, 0.82);
+  z-index: 10;
+  pointer-events: none;
+}
+.model-loading-label {
+  font-family: var(--font-serif, Georgia, serif);
+  font-size: 10px; letter-spacing: 0.42em; text-transform: uppercase;
+  color: rgba(200, 224, 240, 0.55); margin: 0;
+}
+.model-loading-bar-wrap {
+  width: 160px; height: 1px;
+  background: rgba(122, 180, 212, 0.15);
+}
+.model-loading-bar {
+  height: 100%;
+  background: var(--color-accent, #7ab4d4);
+  transition: width 0.3s ease;
+}
+.model-loading-pct {
+  font-family: monospace; font-size: 11px;
+  color: rgba(122, 180, 212, 0.5); margin: 0;
+}
+.model-load-fade-leave-active { transition: opacity 0.6s ease; }
+.model-load-fade-leave-to     { opacity: 0; }
+
 .model-footer {
   display: flex; justify-content: space-between; align-items: center;
   padding: 10px 16px; flex-shrink: 0;
