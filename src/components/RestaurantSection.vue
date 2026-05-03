@@ -209,6 +209,12 @@ function startHijack(fromBelow) {
   hijacked       = true
   activeWp.value = fromBelow ? WAYPOINTS.length - 1 : 0
 
+  // Snap scroll to exact section top — absorbs the "leaked" first scroll
+  // that crossed the detection threshold before the hijack was active
+  if (vpW.value > 768 && sectionRef.value) {
+    window.scrollTo({ top: sectionRef.value.offsetTop, behavior: 'instant' })
+  }
+
   // Show swipe hint on mobile, auto-dismiss after 3.5 s
   if (vpW.value <= 768) {
     showHint.value = true
@@ -259,6 +265,15 @@ function onScroll() {
   const r             = el.getBoundingClientRect()
   const enterProgress = (vpH.value - r.top) / r.height
   introOp.value = Math.max(0, 1 - enterProgress / 0.10)
+
+  // Desktop: detección síncrona del hijack — evita el gap asíncrono del IO
+  if (vpW.value > 768 && !hijacked) {
+    const visH  = Math.min(r.bottom, vpH.value) - Math.max(r.top, 0)
+    const ratio = visH / r.height
+    if (ratio >= 0.92) {
+      startHijack(r.top > vpH.value * 0.5)
+    }
+  }
 
   // Mobile: activeWp se deriva del scroll, sin hijacking
   if (vpW.value <= 768) {
