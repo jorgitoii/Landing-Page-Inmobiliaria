@@ -246,13 +246,6 @@ const BSCALE2  = BSCALE * BSCALE
 const TX0 = 0.0441,  TY0 = 0.049,   TZ0 = -0.0449   // base camera target
 const EX0 = 0.02762, EY0 = 0.05633, EZ0 =  0.25450  // base camera eye
 
-// Scene centering offset — shifts camera+target together (look direction unchanged)
-// Negative X = scene shifts right on screen; Positive Y = scene shifts down on screen
-// Calibrated from: 100px rightward at 1920px, 10px downward at 1080px
-// On mobile the panel layout is centered — no offset needed (avoids scene drifting right on narrow screens)
-const _isMobOffset  = typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0
-const CAM_OFFSET_X  = _isMobOffset ? 0 : -0.0134
-const CAM_OFFSET_Y  = _isMobOffset ? 0 :  0.00134
 
 // Pan mode (replaces old parallax)
 const LERP    = 0.115
@@ -640,10 +633,9 @@ function startRender () {
     const projMat = makePerspective(FOV, aspect, 0.001, 50)
 
     // Pan: eye and target shift together (keeps look direction stable)
-    // CAM_OFFSET_X/Y shifts the entire scene in the viewport without altering aspect ratio
     const viewMat = makeLookAt(
-      EX0 + panCurrX + CAM_OFFSET_X, EY0 + panCurrY + CAM_OFFSET_Y, EZ0,
-      TX0 + panCurrX + CAM_OFFSET_X, TY0 + panCurrY + CAM_OFFSET_Y, TZ0
+      EX0 + panCurrX, EY0 + panCurrY, EZ0,
+      TX0 + panCurrX, TY0 + panCurrY, TZ0
     )
 
     gl.useProgram(program)
@@ -875,6 +867,8 @@ function loadScript (src) {
   width: 100%;
   height: 100%;
   display: block;
+  /* Desktop centering calibrated at 100px right / 10px down */
+  transform: translate(100px, 10px);
 }
 
 .gs-back {
@@ -968,6 +962,9 @@ function loadScript (src) {
   }
   .gs-icon-wrap    { width: 44px; height: 44px; flex-shrink: 0; }
   .gs-opt-label    { font-size: 11px; letter-spacing: 0.28em; }
+
+  /* Viewer: sin offset en móvil → sin barra negra */
+  .gs-canvas { transform: none; }
 
   /* Botones del viewer */
   .gs-home { font-size: 9px; padding: 8px 20px; bottom: 24px; }
