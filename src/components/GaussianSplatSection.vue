@@ -138,17 +138,17 @@
           <p class="gs-cal-title">Calibrar centrado</p>
           <div class="gs-cal-row">
             <label>X</label>
-            <button @click.stop="mobOffX -= 0.001">◀</button>
-            <input type="number" v-model.number="mobOffX" step="0.001" />
-            <button @click.stop="mobOffX += 0.001">▶</button>
+            <button @click.stop="mobNdcX -= 0.02">◀</button>
+            <input type="number" v-model.number="mobNdcX" step="0.02" />
+            <button @click.stop="mobNdcX += 0.02">▶</button>
           </div>
           <div class="gs-cal-row">
             <label>Y</label>
-            <button @click.stop="mobOffY -= 0.0002">▼</button>
-            <input type="number" v-model.number="mobOffY" step="0.0002" />
-            <button @click.stop="mobOffY += 0.0002">▲</button>
+            <button @click.stop="mobNdcY -= 0.02">▼</button>
+            <input type="number" v-model.number="mobNdcY" step="0.02" />
+            <button @click.stop="mobNdcY += 0.02">▲</button>
           </div>
-          <p class="gs-cal-vals">X: {{ mobOffX.toFixed(4) }} · Y: {{ mobOffY.toFixed(4) }}</p>
+          <p class="gs-cal-vals">X: {{ mobNdcX.toFixed(3) }} · Y: {{ mobNdcY.toFixed(3) }}</p>
         </div>
       </div>
     </Transition>
@@ -240,10 +240,10 @@ const isPanned  = ref(false)
 
 const isMobile   = ref(typeof window !== 'undefined' && navigator.maxTouchPoints > 0)
 
-// Mobile calibration offsets (world-space camera shift)
-// Adjust via the on-screen tool, then bake the final values into the code
-const mobOffX = ref(-0.0134)
-const mobOffY = ref( 0.00134)
+// Mobile projection offset (NDC units) — slides rendered output without moving camera/target
+// 1.0 NDC = half the viewport width/height. Adjust via on-screen calibration tool.
+const mobNdcX = ref(0.40)   // initial estimate: ~78px right on 390px wide screen
+const mobNdcY = ref(0.00)
 
 const MODE_MOUSE = 'mouse'
 const MODE_FACE  = 'face'
@@ -485,13 +485,16 @@ function makeProgram (vs, fs) {
 /* ========================================================
    CAMERA MATH (pure JS)
    ======================================================== */
-function makePerspective (fov, aspect, near, far) {
+// ndcOffX/Y slide the rendered output in NDC without moving camera or target.
+// Equivalent to CSS translate() on the canvas but entirely inside WebGL — no black bar.
+// Achieved by adding an asymmetric offset to column 2 of the projection matrix.
+function makePerspective (fov, aspect, near, far, ndcOffX = 0, ndcOffY = 0) {
   const f = 1 / Math.tan(fov / 2), nf = 1 / (near - far)
   return new Float32Array([
-    f / aspect, 0,                    0,  0,
-    0,          f,                    0,  0,
-    0,          0, (far + near) * nf, -1,
-    0,          0, 2*far*near*nf,      0,
+    f / aspect,  0,                    0,  0,
+    0,           f,                    0,  0,
+    -ndcOffX,   -ndcOffY, (far + near) * nf, -1,
+    0,           0, 2*far*near*nf,      0,
   ])
 }
 function makeLookAt (ex, ey, ez, tx, ty, tz) {
@@ -653,17 +656,20 @@ function startRender () {
     isPanned.value = Math.abs(panCurrX) + Math.abs(panCurrY) > 0.001
 
     const aspect  = W / H
-    const projMat = makePerspective(FOV, aspect, 0.001, 50)
 
     // Pan: eye and target shift together (keeps look direction stable)
-    // Desktop: CSS translate(100px,10px) on the canvas handles centering.
-    // Mobile: world-space camera offset (mobOffX/Y) — adjustable via on-screen tool.
-    const _cx = isMobile.value ? mobOffX.value : 0
-    const _cy = isMobile.value ? mobOffY.value : 0
     const viewMat = makeLookAt(
-      EX0 + panCurrX + _cx, EY0 + panCurrY + _cy, EZ0,
-      TX0 + panCurrX + _cx, TY0 + panCurrY + _cy, TZ0
+      EX0 + panCurrX, EY0 + panCurrY, EZ0,
+      TX0 + panCurrX, TY0 + panCurrY, TZ0
     )
+
+    // Projection offset: slides the rendered output in NDC (like CSS translate but inside WebGL).
+    // Camera, target and pan behavior are unchanged.
+    // Desktop: CSS translate(100px,10px) handles centering — no NDC offset needed.
+    // Mobile: NDC offset calibrated via on-screen tool.
+    const _ndcX = isMobile.value ? mobNdcX.value : 0
+    const _ndcY = isMobile.value ? mobNdcY.value : 0
+    const projMat = makePerspective(FOV, aspect, 0.001, 50, _ndcX, _ndcY)
 
     gl.useProgram(program)
     gl.uniformMatrix4fv(uProj,     false, projMat)
