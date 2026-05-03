@@ -133,23 +133,6 @@
         <!-- Bottom home button -->
         <button class="gs-home" @click="exitViewer">Cambiar modo</button>
 
-        <!-- ── CALIBRATION TOOL (mobile only) ── -->
-        <div v-if="isMobile" class="gs-cal">
-          <p class="gs-cal-title">Calibrar centrado</p>
-          <div class="gs-cal-row">
-            <label>X</label>
-            <button @click.stop="mobNdcX -= 0.02">◀</button>
-            <input type="number" v-model.number="mobNdcX" step="0.02" />
-            <button @click.stop="mobNdcX += 0.02">▶</button>
-          </div>
-          <div class="gs-cal-row">
-            <label>Y</label>
-            <button @click.stop="mobNdcY -= 0.02">▼</button>
-            <input type="number" v-model.number="mobNdcY" step="0.02" />
-            <button @click.stop="mobNdcY += 0.02">▲</button>
-          </div>
-          <p class="gs-cal-vals">X: {{ mobNdcX.toFixed(3) }} · Y: {{ mobNdcY.toFixed(3) }}</p>
-        </div>
       </div>
     </Transition>
 
@@ -241,9 +224,9 @@ const isPanned  = ref(false)
 const isMobile   = ref(typeof window !== 'undefined' && navigator.maxTouchPoints > 0)
 
 // Mobile projection offset (NDC units) — slides rendered output without moving camera/target
-// 1.0 NDC = half the viewport width/height. Adjust via on-screen calibration tool.
-const mobNdcX = ref(0.40)   // initial estimate: ~78px right on 390px wide screen
-const mobNdcY = ref(0.00)
+// Calibrated on device: X=0.52, Y=0
+const mobNdcX = 0.52
+const mobNdcY = 0.00
 
 const MODE_MOUSE = 'mouse'
 const MODE_FACE  = 'face'
@@ -667,8 +650,8 @@ function startRender () {
     // Camera, target and pan behavior are unchanged.
     // Desktop: CSS translate(100px,10px) handles centering — no NDC offset needed.
     // Mobile: NDC offset calibrated via on-screen tool.
-    const _ndcX = isMobile.value ? mobNdcX.value : 0
-    const _ndcY = isMobile.value ? mobNdcY.value : 0
+    const _ndcX = isMobile.value ? mobNdcX : 0
+    const _ndcY = isMobile.value ? mobNdcY : 0
     const projMat = makePerspective(FOV, aspect, 0.001, 50, _ndcX, _ndcY)
 
     gl.useProgram(program)
@@ -966,58 +949,6 @@ function loadScript (src) {
   transition: width 0.3s ease;
 }
 
-/* ── CALIBRATION PANEL ── */
-.gs-cal {
-  position: absolute;
-  bottom: 80px; left: 50%;
-  transform: translateX(-50%);
-  z-index: 20;
-  background: rgba(0,0,0,0.72);
-  border: 1px solid rgba(122,180,212,0.25);
-  border-radius: 10px;
-  padding: 12px 16px;
-  display: flex; flex-direction: column; gap: 8px;
-  min-width: 240px;
-  backdrop-filter: blur(8px);
-}
-.gs-cal-title {
-  font-family: var(--font-serif);
-  font-size: 9px; letter-spacing: 0.35em; text-transform: uppercase;
-  color: var(--color-accent); text-align: center; margin: 0;
-}
-.gs-cal-row {
-  display: flex; align-items: center; gap: 8px;
-}
-.gs-cal-row label {
-  font-family: var(--font-serif); font-size: 10px; color: rgba(200,225,240,0.7);
-  width: 12px; text-align: center;
-}
-.gs-cal-row button {
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(122,180,212,0.2);
-  color: rgba(200,225,240,0.8);
-  width: 30px; height: 30px;
-  font-size: 13px;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; border-radius: 4px;
-  flex-shrink: 0;
-}
-.gs-cal-row input {
-  flex: 1;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(122,180,212,0.2);
-  color: rgba(200,225,240,0.9);
-  font-family: monospace; font-size: 11px;
-  text-align: center;
-  padding: 5px 6px; border-radius: 4px;
-  -moz-appearance: textfield;
-}
-.gs-cal-row input::-webkit-outer-spin-button,
-.gs-cal-row input::-webkit-inner-spin-button { -webkit-appearance: none; }
-.gs-cal-vals {
-  font-family: monospace; font-size: 10px;
-  color: rgba(200,225,240,0.45); text-align: center; margin: 0;
-}
 
 @media (max-width: 768px) {
   .gs-section { padding: 0; }
