@@ -113,6 +113,7 @@ const LABELS = [
 ]
 
 const EDITOR_REF_WIDTH = 1920
+const MOBILE_ZOOM      = 1.5   // zoom aplicado en móvil — acerca cada plato a la cámara
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Reactive state
@@ -141,6 +142,15 @@ const sectionStyle = computed(() =>
 const wrapperStyle = computed(() => {
   if (!imgRenderedH.value) return { transform: 'translate(0px,0px)' }
   const wp = WAYPOINTS[activeWp.value]
+
+  if (vpW.value <= 768) {
+    // Mobile: zoom sobre cada plato — pan + scale simultáneos en la transición
+    const s  = MOBILE_ZOOM
+    const tx = vpW.value  / 2 - wp.nx * vpW.value  * s
+    const ty = vpH.value  / 2 - wp.ny * imgRenderedH.value * s
+    return { transform: `translate(${tx}px, ${ty}px) scale(${s})` }
+  }
+
   const tx = vpW.value / 2 - wp.nx * vpW.value
   const ty = vpH.value / 2 - wp.ny * imgRenderedH.value
   return { transform: `translate(${tx}px, ${ty}px)` }
@@ -324,7 +334,7 @@ onUnmounted(() => {
   left: 0;
   will-change: transform;
   transition: transform 1.4s cubic-bezier(0.77, 0, 0.175, 1);
-  transform-origin: top left;
+  transform-origin: 0 0;
 }
 
 .rest-img {
