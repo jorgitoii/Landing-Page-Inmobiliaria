@@ -934,14 +934,42 @@ function loadScript (src) {
 }
 
 @media (max-width: 768px) {
-  .gs-section      { padding: 0; }
-  .gs-ui-layer     { padding: 24px 20px; }
-  .gs-title        { font-size: clamp(1.5rem, 6vw, 2.5rem); letter-spacing: 0.08em; }
-  .gs-eyebrow      { font-size: 10px; letter-spacing: 0.3em; }
-  .gs-opts         { gap: 12px; flex-direction: column; align-items: center; }
-  .gs-opt          { width: 180px; padding: 16px 18px; }
-  .gs-opt-label    { font-size: clamp(0.75rem, 3vw, 0.9rem); }
-  .gs-back-btn     { font-size: 10px; padding: 9px 18px; }
+  /* Quitar offset horizontal — en móvil el canvas llena todo el ancho */
+  .gs-section {
+    padding: 0;
+    --splat-x: 0px;
+  }
+
+  /* Panel de selección */
+  .gs-panel {
+    gap: 28px;
+    padding-top: 64px;
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+  .gs-eyebrow      { font-size: 9px; letter-spacing: 0.3em; }
+  .gs-panel-title  { font-size: clamp(1.2rem, 5vw, 1.8rem); letter-spacing: 0.06em; text-align: center; }
+
+  /* Botones: en columna, centrados */
+  .gs-options {
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+  .gs-opt {
+    width: min(72vw, 260px);
+    padding: 20px 28px;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 18px;
+    border-radius: 12px;
+  }
+  .gs-icon-wrap    { width: 44px; height: 44px; flex-shrink: 0; }
+  .gs-opt-label    { font-size: 11px; letter-spacing: 0.28em; }
+
+  /* Botones del viewer */
+  .gs-home { font-size: 9px; padding: 8px 20px; bottom: 24px; }
+  .gs-back { top: 20px; left: 20px; }
 }
 </style>
                                                                                                                                                                        
