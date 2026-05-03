@@ -249,8 +249,10 @@ const EX0 = 0.02762, EY0 = 0.05633, EZ0 =  0.25450  // base camera eye
 // Scene centering offset — shifts camera+target together (look direction unchanged)
 // Negative X = scene shifts right on screen; Positive Y = scene shifts down on screen
 // Calibrated from: 100px rightward at 1920px, 10px downward at 1080px
-const CAM_OFFSET_X = -0.012
-const CAM_OFFSET_Y =  0.001
+// On mobile the panel layout is centered — no offset needed (avoids scene drifting right on narrow screens)
+const _isMobOffset  = typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0
+const CAM_OFFSET_X  = _isMobOffset ? 0 : -0.0134
+const CAM_OFFSET_Y  = _isMobOffset ? 0 :  0.00134
 
 // Pan mode (replaces old parallax)
 const LERP    = 0.115
