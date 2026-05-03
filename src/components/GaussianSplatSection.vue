@@ -132,6 +132,24 @@
         <video ref="gsVideo" class="gs-video" playsinline autoplay muted></video>
         <!-- Bottom home button -->
         <button class="gs-home" @click="exitViewer">Cambiar modo</button>
+
+        <!-- ── CALIBRATION TOOL (mobile only) ── -->
+        <div v-if="isMobile" class="gs-cal">
+          <p class="gs-cal-title">Calibrar centrado</p>
+          <div class="gs-cal-row">
+            <label>X</label>
+            <button @click.stop="mobOffX -= 0.001">◀</button>
+            <input type="number" v-model.number="mobOffX" step="0.001" />
+            <button @click.stop="mobOffX += 0.001">▶</button>
+          </div>
+          <div class="gs-cal-row">
+            <label>Y</label>
+            <button @click.stop="mobOffY -= 0.0002">▼</button>
+            <input type="number" v-model.number="mobOffY" step="0.0002" />
+            <button @click.stop="mobOffY += 0.0002">▲</button>
+          </div>
+          <p class="gs-cal-vals">X: {{ mobOffX.toFixed(4) }} · Y: {{ mobOffY.toFixed(4) }}</p>
+        </div>
       </div>
     </Transition>
 
@@ -221,6 +239,11 @@ const progress  = ref(0)
 const isPanned  = ref(false)
 
 const isMobile   = ref(typeof window !== 'undefined' && navigator.maxTouchPoints > 0)
+
+// Mobile calibration offsets (world-space camera shift)
+// Adjust via the on-screen tool, then bake the final values into the code
+const mobOffX = ref(-0.0134)
+const mobOffY = ref( 0.00134)
 
 const MODE_MOUSE = 'mouse'
 const MODE_FACE  = 'face'
@@ -633,14 +656,13 @@ function startRender () {
     const projMat = makePerspective(FOV, aspect, 0.001, 50)
 
     // Pan: eye and target shift together (keeps look direction stable)
-    // On mobile: CSS transform is reset to none (no black bar), so we compensate
-    // with a world-space camera offset that replicates the same 100px/10px centering.
-    // Desktop centering is handled purely by CSS translate(100px, 10px) on the canvas.
-    const _mobCX = isMobile.value ? -0.0134  : 0
-    const _mobCY = isMobile.value ?  0.00134 : 0
+    // Desktop: CSS translate(100px,10px) on the canvas handles centering.
+    // Mobile: world-space camera offset (mobOffX/Y) — adjustable via on-screen tool.
+    const _cx = isMobile.value ? mobOffX.value : 0
+    const _cy = isMobile.value ? mobOffY.value : 0
     const viewMat = makeLookAt(
-      EX0 + panCurrX + _mobCX, EY0 + panCurrY + _mobCY, EZ0,
-      TX0 + panCurrX + _mobCX, TY0 + panCurrY + _mobCY, TZ0
+      EX0 + panCurrX + _cx, EY0 + panCurrY + _cy, EZ0,
+      TX0 + panCurrX + _cx, TY0 + panCurrY + _cy, TZ0
     )
 
     gl.useProgram(program)
@@ -936,6 +958,59 @@ function loadScript (src) {
   height: 100%;
   background: var(--color-accent);
   transition: width 0.3s ease;
+}
+
+/* ── CALIBRATION PANEL ── */
+.gs-cal {
+  position: absolute;
+  bottom: 80px; left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  background: rgba(0,0,0,0.72);
+  border: 1px solid rgba(122,180,212,0.25);
+  border-radius: 10px;
+  padding: 12px 16px;
+  display: flex; flex-direction: column; gap: 8px;
+  min-width: 240px;
+  backdrop-filter: blur(8px);
+}
+.gs-cal-title {
+  font-family: var(--font-serif);
+  font-size: 9px; letter-spacing: 0.35em; text-transform: uppercase;
+  color: var(--color-accent); text-align: center; margin: 0;
+}
+.gs-cal-row {
+  display: flex; align-items: center; gap: 8px;
+}
+.gs-cal-row label {
+  font-family: var(--font-serif); font-size: 10px; color: rgba(200,225,240,0.7);
+  width: 12px; text-align: center;
+}
+.gs-cal-row button {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(122,180,212,0.2);
+  color: rgba(200,225,240,0.8);
+  width: 30px; height: 30px;
+  font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; border-radius: 4px;
+  flex-shrink: 0;
+}
+.gs-cal-row input {
+  flex: 1;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(122,180,212,0.2);
+  color: rgba(200,225,240,0.9);
+  font-family: monospace; font-size: 11px;
+  text-align: center;
+  padding: 5px 6px; border-radius: 4px;
+  -moz-appearance: textfield;
+}
+.gs-cal-row input::-webkit-outer-spin-button,
+.gs-cal-row input::-webkit-inner-spin-button { -webkit-appearance: none; }
+.gs-cal-vals {
+  font-family: monospace; font-size: 10px;
+  color: rgba(200,225,240,0.45); text-align: center; margin: 0;
 }
 
 @media (max-width: 768px) {
