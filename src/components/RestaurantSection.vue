@@ -48,17 +48,6 @@
         />
       </nav>
 
-      <!-- ── CALIBRATION TOOL (mobile only) ── -->
-      <div v-if="isMobileDevice" class="rcal">
-        <p class="rcal-title">WP {{ activeWp + 1 }} / {{ WAYPOINTS.length }}</p>
-        <div class="rcal-row">
-          <button @click.stop="nudges[activeWp] -= 0.02">◀</button>
-          <span class="rcal-val">{{ nudges[activeWp].toFixed(2) }}</span>
-          <button @click.stop="nudges[activeWp] += 0.02">▶</button>
-        </div>
-        <p class="rcal-all">{{ nudges.map(n => n.toFixed(2)).join(' · ') }}</p>
-      </div>
-
       <!-- Swipe hint — visible on mobile when section is active -->
       <Transition name="hint-fade">
         <div class="swipe-hint" v-if="showHint">
@@ -126,10 +115,9 @@ const LABELS = [
 const EDITOR_REF_WIDTH = 1920
 const MOBILE_ZOOM      = 1.5   // zoom aplicado en móvil — acerca cada plato a la cámara
 
-// Nudge horizontal por waypoint (coordenadas normalizadas de imagen)
-// Negativo = desplaza encuadre a la izquierda; positivo = a la derecha
-// Calibrar con la herramienta on-screen en móvil, luego bake aquí
-const nudges        = ref([0, 0, 0, 0, 0])
+// Nudge horizontal por waypoint — calibrado en dispositivo
+// Desplaza el encuadre para mostrar plato + texto en frame simultáneamente
+const NUDGES         = [0.16, -0.08, 0.14, -0.08, 0.14]
 const isMobileDevice = typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -163,7 +151,7 @@ const wrapperStyle = computed(() => {
   if (vpW.value <= 768) {
     // Mobile: zoom + nudge horizontal para equilibrar plato y texto en frame
     const s     = MOBILE_ZOOM
-    const nudge = nudges.value[activeWp.value] ?? 0
+    const nudge = NUDGES[activeWp.value] ?? 0
     const tx = vpW.value / 2 - (wp.nx + nudge) * vpW.value  * s
     const ty = vpH.value / 2 -  wp.ny          * imgRenderedH.value * s
     return { transform: `translate(${tx}px, ${ty}px) scale(${s})` }
@@ -541,46 +529,6 @@ onUnmounted(() => {
 /* Hide on desktop */
 @media (min-width: 769px) { .swipe-hint { display: none !important; } }
 
-/* ── Calibration tool ── */
-.rcal {
-  position: absolute;
-  top: 50%; right: 14px;
-  transform: translateY(-50%);
-  z-index: 30;
-  background: rgba(0,0,0,0.70);
-  border: 1px solid rgba(122,180,212,0.25);
-  border-radius: 10px;
-  padding: 10px 12px;
-  display: flex; flex-direction: column; align-items: center; gap: 7px;
-  backdrop-filter: blur(6px);
-  min-width: 120px;
-}
-.rcal-title {
-  font-family: var(--font-serif, Georgia, serif);
-  font-size: 9px; letter-spacing: 0.3em; text-transform: uppercase;
-  color: rgba(200,224,240,0.7); margin: 0;
-}
-.rcal-row {
-  display: flex; align-items: center; gap: 8px;
-}
-.rcal-row button {
-  background: rgba(255,255,255,0.07);
-  border: 1px solid rgba(122,180,212,0.2);
-  color: rgba(200,224,240,0.85);
-  width: 30px; height: 30px; font-size: 13px;
-  border-radius: 4px; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-}
-.rcal-val {
-  font-family: monospace; font-size: 13px;
-  color: rgba(200,224,240,0.95);
-  min-width: 40px; text-align: center;
-}
-.rcal-all {
-  font-family: monospace; font-size: 9px;
-  color: rgba(200,224,240,0.4); margin: 0; text-align: center;
-}
-@media (min-width: 769px) { .rcal { display: none !important; } }
 
 .hint-fade-enter-active, .hint-fade-leave-active { transition: opacity 0.55s ease; }
 .hint-fade-enter-from,   .hint-fade-leave-to     { opacity: 0; }
