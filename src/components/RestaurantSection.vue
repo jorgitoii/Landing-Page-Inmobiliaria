@@ -67,10 +67,6 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { gsap }     from 'gsap'
-import { Observer } from 'gsap/Observer'
-
-gsap.registerPlugin(Observer)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Config: waypoints & labels (exported from waypoint-editor.html)
@@ -139,10 +135,8 @@ let   hintTimer    = null
 // Image wrapper transform — centers the active waypoint in the viewport
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Mobile: sección crece a N×100vh para scroll nativo; desktop: 100vh con hijacking
-const sectionStyle = computed(() =>
-  vpW.value <= 768 ? { height: `${WAYPOINTS.length * 100}vh` } : {}
-)
+// Sección siempre crece a N×100vh — scroll nativo tanto en móvil como en desktop
+const sectionStyle = computed(() => ({ height: `${WAYPOINTS.length * 100}vh` }))
 
 const wrapperStyle = computed(() => {
   if (!imgRenderedH.value) return { transform: 'translate(0px,0px)' }
@@ -192,71 +186,65 @@ function onImgLoad() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Scroll hijacking via GSAP Observer
+// Swipe hint helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-let obs      = null
-let io       = null
-let hijacked = false
+let io         = null
+let hintShown  = false
 
 function hideHint() {
   showHint.value = false
   if (hintTimer) { clearTimeout(hintTimer); hintTimer = null }
 }
 
-function startHijack(fromBelow) {
-  if (hijacked) return
-  hijacked       = true
-  activeWp.value = fromBelow ? WAYPOINTS.length - 1 : 0
+// ─────────────────────────────────────────────────────────────────────────────
+// Wheel snap — desktop: un scroll = un waypoint (sin hijacking total)
+// ─────────────────────────────────────────────────────────────────────────────
 
-  // Snap scroll to exact section top — absorbs the "leaked" first scroll
-  // that crossed the detection threshold before the hijack was active
-  if (vpW.value > 768 && sectionRef.value) {
-    window.scrollTo({ top: sectionRef.value.offsetTop, behavior: 'instant' })
-  }
+let snapping     = false
+let snapCooldown = null
 
-  // Show swipe hint on mobile, auto-dismiss after 3.5 s
-  if (vpW.value <= 768) {
-    showHint.value = true
-    hintTimer = setTimeout(hideHint, 3500)
-  }
-
-  obs = Observer.create({
-    target: window,
-    type: 'wheel,touch',
-    tolerance: 10,
-    preventDefault: true,
-    onDown: () => {                                  // scroll hacia abajo → siguiente plato
-      hideHint()
-      if (activeWp.value < WAYPOINTS.length - 1) {
-        activeWp.value++
-      } else {
-        stopHijack()                                 // último plato → salir hacia abajo
-      }
-    },
-    onUp: () => {                                    // scroll hacia arriba → plato anterior
-      hideHint()
-      if (activeWp.value > 0) {
-        activeWp.value--
-      } else {
-        stopHijack()                                 // primer plato → salir hacia arriba
-      }
-    },
-  })
+// Calcula el scrollY exacto que corresponde al waypoint `wpIndex`
+function waypointScrollTop(wpIndex) {
+  const section = sectionRef.value
+  if (!section) return 0
+  const scrollable = section.offsetHeight - vpH.value          // 4 × 100vh
+  return section.offsetTop + wpIndex * (scrollable / (WAYPOINTS.length - 1))
 }
 
-function stopHijack() {
-  if (obs)   { obs.kill(); obs = null }
-  hijacked = false
-  hideHint()
+function onWheel(e) {
+  // Solo en desktop
+  if (vpW.value <= 768) return
+
+  const section = sectionRef.value
+  if (!section) return
+  const r = section.getBoundingClientRect()
+
+  // La sección está "pegada" cuando su top está ≤ 0 y aún no ha salido por abajo
+  const isSticky = r.top <= 1 && r.bottom >= vpH.value - 1
+  if (!isSticky) return
+
+  // Durante la animación de snap, solo bloqueamos el scroll nativo
+  if (snapping) { e.preventDefault(); return }
+
+  const dir    = e.deltaY > 0 ? 1 : -1
+  const nextWp = activeWp.value + dir
+
+  // En los extremos dejamos pasar el scroll (salida natural hacia la sección contigua)
+  if (nextWp < 0 || nextWp >= WAYPOINTS.length) return
+
+  e.preventDefault()
+  snapping = true
+
+  window.scrollTo({ top: waypointScrollTop(nextWp), behavior: 'smooth' })
+
+  // Cooldown: bloqueamos wheels adicionales hasta que el smooth-scroll casi termine
+  clearTimeout(snapCooldown)
+  snapCooldown = setTimeout(() => { snapping = false }, 750)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// IntersectionObserver — activa el hijack cuando la sección llena la pantalla
-// ─────────────────────────────────────────────────────────────────────────────
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Scroll listener — solo para la intro overlay (igual que ArchitectsSection)
+// Scroll listener — intro overlay + activeWp derivado del scroll (nativo)
 // ─────────────────────────────────────────────────────────────────────────────
 
 function onScroll() {
@@ -266,25 +254,14 @@ function onScroll() {
   const enterProgress = (vpH.value - r.top) / r.height
   introOp.value = Math.max(0, 1 - enterProgress / 0.10)
 
-  // Desktop: detección síncrona del hijack — evita el gap asíncrono del IO
-  if (vpW.value > 768 && !hijacked) {
-    const visH  = Math.min(r.bottom, vpH.value) - Math.max(r.top, 0)
-    const ratio = visH / r.height
-    if (ratio >= 0.92) {
-      startHijack(r.top > vpH.value * 0.5)
-    }
-  }
-
-  // Mobile: activeWp se deriva del scroll, sin hijacking
-  if (vpW.value <= 768) {
-    const scrollable = r.height - vpH.value
-    if (scrollable > 0) {
-      const pct = Math.max(0, Math.min(1, -r.top / scrollable))
-      activeWp.value = Math.min(
-        WAYPOINTS.length - 1,
-        Math.round(pct * (WAYPOINTS.length - 1))
-      )
-    }
+  // activeWp se deriva del scroll en todos los tamaños de pantalla
+  const scrollable = r.height - vpH.value
+  if (scrollable > 0) {
+    const pct = Math.max(0, Math.min(1, -r.top / scrollable))
+    activeWp.value = Math.min(
+      WAYPOINTS.length - 1,
+      Math.round(pct * (WAYPOINTS.length - 1))
+    )
   }
 }
 
@@ -298,25 +275,24 @@ function onResize() {
 }
 
 onMounted(() => {
+  // IO solo para mostrar el hint al entrar por primera vez (solo aplica en móvil via CSS)
   io = new IntersectionObserver((entries) => {
     for (const e of entries) {
-      if (vpW.value > 768) {   // Desktop only: hijack scroll
-        if (!hijacked && e.intersectionRatio >= 0.92) {
-          // Sección casi llena el viewport → tomar control del scroll
-          const fromBelow = e.boundingClientRect.top > vpH.value * 0.5
-          startHijack(fromBelow)
-        } else if (hijacked && e.intersectionRatio === 0) {
-          // Sección completamente fuera → liberar (fallback de seguridad)
-          stopHijack()
-        }
+      if (e.isIntersecting && !hintShown) {
+        hintShown      = true
+        showHint.value = true
+        hintTimer      = setTimeout(hideHint, 3500)
+        io.unobserve(sectionRef.value)
       }
     }
-  }, { threshold: [0, 0.92] })
+  }, { threshold: 0.1 })
 
   if (sectionRef.value) io.observe(sectionRef.value)
 
   window.addEventListener('scroll', onScroll, { passive: true })
   window.addEventListener('resize', onResize)
+  // passive: false necesario para poder llamar preventDefault en el wheel
+  window.addEventListener('wheel', onWheel, { passive: false })
 
   // Por si la imagen ya estaba cacheada y @load no disparó
   const img = imgRef.value
@@ -326,25 +302,28 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  stopHijack()
-  if (io) { io.disconnect(); io = null }
-  if (hintTimer) { clearTimeout(hintTimer); hintTimer = null }
+  if (io)          { io.disconnect(); io = null }
+  if (snapCooldown){ clearTimeout(snapCooldown); snapCooldown = null }
+  hideHint()
   window.removeEventListener('scroll', onScroll)
   window.removeEventListener('resize', onResize)
+  window.removeEventListener('wheel',  onWheel)
 })
 </script>
 
 <style scoped>
-/* ── Sección ocupa exactamente 100vh ──────────────────────────────────── */
+/* ── Sección tall: crece a N×100vh para scroll nativo en todos los dispositivos ── */
 .rest-section {
   position: relative;
-  height: 100vh;
+  height: auto;
+  overflow: visible;
   background: #060c16;
 }
 
-/* ── Viewport interior ────────────────────────────────────────────────── */
+/* ── Viewport interior sticky — se fija al top mientras se scrollea la sección ── */
 .rest-sticky {
-  position: relative;
+  position: sticky;
+  top: 0;
   height: 100vh;
   overflow: hidden;
   background: #060c16;
@@ -499,9 +478,6 @@ onUnmounted(() => {
 }
 
 @media (max-width: 768px) {
-  /* Sección tall: el sticky hace de viewport fijo mientras se scrollea */
-  .rest-section { height: auto; overflow: visible; }
-  .rest-sticky  { position: sticky; top: 0; }
   .rest-label { font-family: Georgia, serif; }
   .rest-nav-dots { right: 12px; gap: 7px; }
   .rest-dot { width: 5px; height: 5px; }
