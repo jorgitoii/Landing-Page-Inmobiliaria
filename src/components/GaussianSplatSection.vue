@@ -633,9 +633,14 @@ function startRender () {
     const projMat = makePerspective(FOV, aspect, 0.001, 50)
 
     // Pan: eye and target shift together (keeps look direction stable)
+    // On mobile: CSS transform is reset to none (no black bar), so we compensate
+    // with a world-space camera offset that replicates the same 100px/10px centering.
+    // Desktop centering is handled purely by CSS translate(100px, 10px) on the canvas.
+    const _mobCX = isMobile.value ? -0.0134  : 0
+    const _mobCY = isMobile.value ?  0.00134 : 0
     const viewMat = makeLookAt(
-      EX0 + panCurrX, EY0 + panCurrY, EZ0,
-      TX0 + panCurrX, TY0 + panCurrY, TZ0
+      EX0 + panCurrX + _mobCX, EY0 + panCurrY + _mobCY, EZ0,
+      TX0 + panCurrX + _mobCX, TY0 + panCurrY + _mobCY, TZ0
     )
 
     gl.useProgram(program)
