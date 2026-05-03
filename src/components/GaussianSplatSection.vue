@@ -246,6 +246,12 @@ const BSCALE2  = BSCALE * BSCALE
 const TX0 = 0.0441,  TY0 = 0.049,   TZ0 = -0.0449   // base camera target
 const EX0 = 0.02762, EY0 = 0.05633, EZ0 =  0.25450  // base camera eye
 
+// Scene centering offset — shifts camera+target together (look direction unchanged)
+// Negative X = scene shifts right on screen; Positive Y = scene shifts down on screen
+// Calibrated from: 100px rightward at 1920px, 10px downward at 1080px
+const CAM_OFFSET_X = -0.012
+const CAM_OFFSET_Y =  0.001
+
 // Pan mode (replaces old parallax)
 const LERP    = 0.115
 const PAN_MAX      = 0.114   // mouse pan  (+68% total)
@@ -632,9 +638,10 @@ function startRender () {
     const projMat = makePerspective(FOV, aspect, 0.001, 50)
 
     // Pan: eye and target shift together (keeps look direction stable)
+    // CAM_OFFSET_X/Y shifts the entire scene in the viewport without altering aspect ratio
     const viewMat = makeLookAt(
-      EX0 + panCurrX, EY0 + panCurrY, EZ0,
-      TX0 + panCurrX, TY0 + panCurrY, TZ0
+      EX0 + panCurrX + CAM_OFFSET_X, EY0 + panCurrY + CAM_OFFSET_Y, EZ0,
+      TX0 + panCurrX + CAM_OFFSET_X, TY0 + panCurrY + CAM_OFFSET_Y, TZ0
     )
 
     gl.useProgram(program)
@@ -857,31 +864,15 @@ function loadScript (src) {
 /* ── VIEWER ── */
 /* ── VIEWER ── */
 
-.gs-section {
-  --splat-x: 100px;
-  --splat-y: 10px;
-}
-
 .gs-viewer {
   position: absolute; inset: 0;
 }
 .gs-canvas {
   position: absolute;
-  /*
-    Opción A: el canvas sangra abs(offset) en cada eje.
-    Tras el transform, el borde que se aleja rellena el hueco — sin barra negra.
-    Con offset 0 queda idéntico a width/height 100%.
-
-    abs(x) via CSS puro: max(x, -x)
-  */
-  --_ax: max(var(--splat-x, 0px), calc(-1 * var(--splat-x, 0px)));
-  --_ay: max(var(--splat-y, 0px), calc(-1 * var(--splat-y, 0px)));
-  left:   calc(-1 * var(--_ax));
-  top:    calc(-1 * var(--_ay));
-  width:  calc(100% + 2 * var(--_ax));
-  height: calc(100% + 2 * var(--_ay));
+  inset: 0;
+  width: 100%;
+  height: 100%;
   display: block;
-  transform: translate(var(--splat-x, 0px), var(--splat-y, 0px));
 }
 
 .gs-back {
@@ -947,12 +938,7 @@ function loadScript (src) {
 }
 
 @media (max-width: 768px) {
-  /* En móvil resetear offset — el centrado de 100px es específico de desktop */
-  .gs-section {
-    padding: 0;
-    --splat-x: 0px;
-    --splat-y: 0px;
-  }
+  .gs-section { padding: 0; }
 
   /* Panel de selección */
   .gs-panel {
