@@ -24,20 +24,22 @@
           </div>
 
           <div class="gallery-grid">
-            <TransitionGroup name="grid-item" tag="div" class="grid-inner">
-              <div
-                v-for="(img, i) in currentImages"
-                :key="img.src"
-                class="grid-card"
-                :style="{ animationDelay: `${i * 0.06}s` }"
-                @click="openLightbox(img)"
-              >
-                <img :src="img.src" :alt="img.alt" />
-                <div class="grid-overlay">
-                  <span>{{ img.alt }}</span>
+            <Transition name="tab-switch" mode="out-in">
+              <div class="grid-inner" :key="activeTab">
+                <div
+                  v-for="(img, i) in currentImages"
+                  :key="img.src"
+                  class="grid-card"
+                  :style="{ animationDelay: `${i * 0.06}s` }"
+                  @click="openLightbox(img)"
+                >
+                  <img :src="img.src" :alt="img.alt" />
+                  <div class="grid-overlay">
+                    <span>{{ img.alt }}</span>
+                  </div>
                 </div>
               </div>
-            </TransitionGroup>
+            </Transition>
           </div>
         </div>
 
@@ -379,6 +381,12 @@ onUnmounted(() => {
 .gallery-fade-enter-from, .gallery-fade-leave-to { opacity: 0; }
 .lb-fade-enter-active, .lb-fade-leave-active { transition: opacity 0.3s ease; }
 .lb-fade-enter-from, .lb-fade-leave-to { opacity: 0; }
+
+/* Tab switch — cross-fade between tabs */
+.tab-switch-leave-active { transition: opacity 0.18s ease; }
+.tab-switch-leave-to     { opacity: 0; }
+.tab-switch-enter-active { transition: opacity 0.28s ease; }
+.tab-switch-enter-from   { opacity: 0; }
 
 /* ── 360 badge ───────────────────────────────────────────── */
 .badge-360 {

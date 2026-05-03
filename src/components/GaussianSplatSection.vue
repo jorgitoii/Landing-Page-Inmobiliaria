@@ -773,6 +773,7 @@ function loadScript (src) {
   align-items: center; justify-content: center;
   gap: 48px;
   background: linear-gradient(to bottom, #2a1208 0%, #02060e 100%);
+  padding-top: 72px; /* offset for fixed header */
 }
 .gs-eyebrow {
   font-family: var(--font-jp);

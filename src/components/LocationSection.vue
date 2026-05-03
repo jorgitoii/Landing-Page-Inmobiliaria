@@ -111,6 +111,21 @@
           <!-- Mapa -->
           <div class="loc-map-wrap">
             <div class="loc-map" ref="mapEl"></div>
+            <!-- Touch gate: tap to unlock map interaction on mobile -->
+            <Transition name="map-gate-fade">
+              <div
+                v-if="!mapActivated"
+                class="map-touch-gate"
+                @click.stop="activateMap"
+                @touchstart.stop.prevent="activateMap"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+                  <circle cx="12" cy="9" r="2.5"/>
+                </svg>
+                <span>Toca para interactuar</span>
+              </div>
+            </Transition>
             <button class="map-expand-btn" @click="openMapFull" title="Ver mapa completo">
               <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M3 8V3h5M17 8V3h-5M3 12v5h5M17 12v5h-5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
@@ -124,6 +139,10 @@
         <div class="glass-card model-card">
           <div class="model-wrap" ref="modelWrap">
             <canvas ref="threeCanvas"></canvas>
+
+            <!-- Scroll strips: 28px transparent edges that allow vertical scroll on mobile -->
+            <div class="canvas-scroll-strip canvas-scroll-strip--left"></div>
+            <div class="canvas-scroll-strip canvas-scroll-strip--right"></div>
 
             <!-- Brújula clásica — rota con la cámara -->
             <div class="compass-wrap">
@@ -332,6 +351,15 @@ const threeCanvas  = ref(null), modelWrap = ref(null)
 const mapEl        = ref(null)
 const compassAngle = ref(0)   // grados — actualizado en el loop de Three.js
 let animId, leafletMap = null
+
+// ── Map touch gate (mobile scroll competition) ───────────
+const mapActivated = ref(false)
+let   mapDeactivateTimer = null
+function activateMap () {
+  mapActivated.value = true
+  clearTimeout(mapDeactivateTimer)
+  mapDeactivateTimer = setTimeout(() => { mapActivated.value = false }, 6000)
+}
 
 // ── Rutas de luz — constantes y estado reactivo ───────────
 const BAKED_DIST = 7.474
@@ -1318,6 +1346,40 @@ const close3d = () => { show3d.value = false; cancelAnimationFrame(fAnimId); if 
   width: 100%; height: 220px; overflow: hidden; margin-top: 0;
   filter: sepia(0.50) invert(1.00) brightness(1.80) saturate(1.40) hue-rotate(303deg) contrast(0.80);
 }
+/* ── Map touch gate ──────────────────────────────────────── */
+.map-touch-gate {
+  position: absolute; inset: 0; z-index: 5;
+  background: rgba(6, 14, 30, 0.52);
+  backdrop-filter: blur(2px);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.map-touch-gate svg {
+  width: 22px; height: 22px;
+  color: rgba(122, 180, 212, 0.80);
+  filter: drop-shadow(0 0 6px rgba(122,180,212,0.4));
+}
+.map-touch-gate span {
+  font-family: var(--font-serif);
+  font-size: 9px; letter-spacing: 0.40em;
+  text-transform: uppercase;
+  color: rgba(200, 225, 240, 0.65);
+}
+.map-gate-fade-enter-active, .map-gate-fade-leave-active { transition: opacity 0.3s ease; }
+.map-gate-fade-enter-from,   .map-gate-fade-leave-to     { opacity: 0; }
+
+/* ── Canvas scroll strips (3D model) ─────────────────────── */
+.canvas-scroll-strip {
+  position: absolute; top: 0; bottom: 0;
+  width: 28px; z-index: 4;
+  touch-action: pan-y;
+  pointer-events: auto;
+}
+.canvas-scroll-strip--left  { left: 0; }
+.canvas-scroll-strip--right { right: 0; }
+
 .map-expand-btn {
   position: absolute;
   top: 8px; right: 8px;
