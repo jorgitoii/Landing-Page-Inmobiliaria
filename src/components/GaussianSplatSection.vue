@@ -866,7 +866,20 @@ function loadScript (src) {
   position: absolute; inset: 0;
 }
 .gs-canvas {
-  width: 100%; height: 100%;
+  position: absolute;
+  /*
+    Opción A: el canvas sangra abs(offset) en cada eje.
+    Tras el transform, el borde que se aleja rellena el hueco — sin barra negra.
+    Con offset 0 queda idéntico a width/height 100%.
+
+    abs(x) via CSS puro: max(x, -x)
+  */
+  --_ax: max(var(--splat-x, 0px), calc(-1 * var(--splat-x, 0px)));
+  --_ay: max(var(--splat-y, 0px), calc(-1 * var(--splat-y, 0px)));
+  left:   calc(-1 * var(--_ax));
+  top:    calc(-1 * var(--_ay));
+  width:  calc(100% + 2 * var(--_ax));
+  height: calc(100% + 2 * var(--_ay));
   display: block;
   transform: translate(var(--splat-x, 0px), var(--splat-y, 0px));
 }
@@ -934,10 +947,11 @@ function loadScript (src) {
 }
 
 @media (max-width: 768px) {
-  /* Quitar offset horizontal — en móvil el canvas llena todo el ancho */
+  /* En móvil resetear offset — el centrado de 100px es específico de desktop */
   .gs-section {
     padding: 0;
     --splat-x: 0px;
+    --splat-y: 0px;
   }
 
   /* Panel de selección */
