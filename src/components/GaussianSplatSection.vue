@@ -161,6 +161,7 @@ const sectionEl   = ref(null)
 const discoveryOp = ref(1)
 const doorOpen    = ref(false)
 
+
 // Puerta corrediza — config final
 const DOOR_DELAY    = 400    // ms antes de abrir
 const DOOR_DURATION = 4000   // ms de la transición
@@ -207,6 +208,7 @@ onMounted(() => {
 })
 
 const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' })
+
 
 /* ========================================================
    VIEWER STATE
@@ -507,7 +509,7 @@ async function loadSPLAT () {
   }
 
   loadLabel.value = 'Descargando escena...'
-  const url  = 'https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/3D/Guassian/Table.splat'
+  const url = 'https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/3D/Guassian/Table.splat'
   const resp = await fetch(url)
   if (!resp.ok) { loadLabel.value = 'Error ' + resp.status; return }
 
@@ -854,13 +856,21 @@ function loadScript (src) {
 
 /* ── VIEWER ── */
 /* ── VIEWER ── */
+
+.gs-section {
+  --splat-x: 100px;
+  --splat-y: 10px;
+}
+
 .gs-viewer {
   position: absolute; inset: 0;
 }
 .gs-canvas {
   width: 100%; height: 100%;
   display: block;
+  transform: translate(var(--splat-x, 0px), var(--splat-y, 0px));
 }
+
 .gs-back {
   position: absolute; top: 28px; left: 32px; z-index: 10;
   background: none;

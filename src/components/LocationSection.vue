@@ -126,6 +126,13 @@
                 <span>Toca para interactuar</span>
               </div>
             </Transition>
+            <!-- Recenter button -->
+            <button class="map-recenter-btn" @click="recenterMap" title="Recentrar mapa">
+              <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="10" cy="10" r="3" stroke="currentColor" stroke-width="1.4"/>
+                <path d="M10 2v3M10 15v3M2 10h3M15 10h3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+              </svg>
+            </button>
             <button class="map-expand-btn" @click="openMapFull" title="Ver mapa completo">
               <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M3 8V3h5M17 8V3h-5M3 12v5h5M17 12v5h-5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
@@ -359,6 +366,12 @@ function activateMap () {
   mapActivated.value = true
   clearTimeout(mapDeactivateTimer)
   mapDeactivateTimer = setTimeout(() => { mapActivated.value = false }, 6000)
+}
+
+// ── Map recenter ─────────────────────────────────────────
+const MAP_LAT = 36.2567, MAP_LNG = 136.9056
+function recenterMap () {
+  if (leafletMap) leafletMap.flyTo([MAP_LAT, MAP_LNG], 14, { animate: true, duration: 0.8 })
 }
 
 // ── Rutas de luz — constantes y estado reactivo ───────────
@@ -844,10 +857,13 @@ function _addModelToScene (model, scene, camera, controls) {
   const size2   = box2.getSize(new THREE.Vector3())
   controls.target.copy(center2)
   const footprint = Math.sqrt(size2.x * size2.x + size2.z * size2.z)
-  const dist      = footprint * 1.2 + size2.y * 0.5
+  // En móvil: acercar la cámara 40% más para reducir pixelado
+  const _isMob    = navigator.maxTouchPoints > 0
+  const zoomMult  = _isMob ? 0.60 : 1.0
+  const dist      = (footprint * 1.2 + size2.y * 0.5) * zoomMult
   camera.position.set(center2.x, center2.y + size2.y * 0.08, center2.z + dist)
-  controls.minDistance = dist * 0.925
-  controls.maxDistance = dist * 1.075
+  controls.minDistance = dist * 0.85
+  controls.maxDistance = dist * 1.15
   scene.add(model)
   controls.update()
 }
@@ -1379,6 +1395,22 @@ const close3d = () => { show3d.value = false; cancelAnimationFrame(fAnimId); if 
 }
 .canvas-scroll-strip--left  { left: 0; }
 .canvas-scroll-strip--right { right: 0; }
+
+.map-recenter-btn {
+  position: absolute;
+  top: 8px; right: 46px; /* next to expand btn */
+  width: 30px; height: 30px;
+  background: rgba(6,14,30,0.72);
+  border: 1px solid rgba(122,180,212,0.22);
+  color: rgba(200,225,240,0.65);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: border-color 0.2s ease, color 0.2s ease;
+  z-index: 10;
+}
+.map-recenter-btn:hover { border-color: rgba(122,180,212,0.55); color: rgba(200,225,240,1); }
+.map-recenter-btn svg { width: 14px; height: 14px; }
 
 .map-expand-btn {
   position: absolute;
