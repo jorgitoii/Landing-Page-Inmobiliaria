@@ -286,15 +286,17 @@ onMounted(() => {
   io = new IntersectionObserver((entries) => {
     for (const e of entries) {
       if (vpW.value > 768) {   // Desktop only: hijack scroll
-        if (e.isIntersecting) {
+        if (!hijacked && e.intersectionRatio >= 0.92) {
+          // Sección casi llena el viewport → tomar control del scroll
           const fromBelow = e.boundingClientRect.top > vpH.value * 0.5
           startHijack(fromBelow)
-        } else {
+        } else if (hijacked && e.intersectionRatio === 0) {
+          // Sección completamente fuera → liberar (fallback de seguridad)
           stopHijack()
         }
       }
     }
-  }, { threshold: 0.92 })
+  }, { threshold: [0, 0.92] })
 
   if (sectionRef.value) io.observe(sectionRef.value)
 
