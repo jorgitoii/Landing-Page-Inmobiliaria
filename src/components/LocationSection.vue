@@ -546,11 +546,12 @@ class LocSplineObj {
 function buildLocationScene (canvas, container) {
   const W = container.clientWidth  || 400
   const H = container.clientHeight || 400
+  const _isMob = navigator.maxTouchPoints > 0
 
   // Renderer — alpha:true para que el canvas sea transparente
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
   renderer.setSize(W, H)
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, _isMob ? 1 : 1.5))
   renderer.toneMapping        = THREE.ACESFilmicToneMapping
   renderer.toneMappingExposure = 1.7
   renderer.shadowMap.enabled  = false
@@ -611,6 +612,8 @@ function buildLocationScene (canvas, container) {
   bloomComposer.renderToScreen = false
   bloomComposer.addPass(new RenderPass(scene, camera))
   bloomComposer.addPass(bloomPass)
+  // Móvil: bloom a media resolución → ahorra ~75% de VRAM en framebuffers
+  if (_isMob) bloomComposer.setSize(Math.floor(W / 2), Math.floor(H / 2))
 
   const mixPass = new ShaderPass(new THREE.ShaderMaterial({
     uniforms: {
@@ -676,10 +679,16 @@ function buildLocationScene (canvas, container) {
   }
   window.addEventListener('resize', _onResize)
 
+  // ── Pausa cuando la sección está fuera del viewport ──────
+  let _renderPaused = false
+  const _visIO = new IntersectionObserver(([e]) => { _renderPaused = !e.isIntersecting }, { threshold: 0 })
+  _visIO.observe(canvas)
+
   // ── Loop principal ────────────────────────────────────────
   const clock = new THREE.Clock()
   ;(function loop () {
     animId = requestAnimationFrame(loop)
+    if (_renderPaused) return
     const dt = clock.getDelta()
 
     locSplines.forEach(sp => sp.tickParticles(dt))
@@ -723,6 +732,7 @@ function buildLocationScene (canvas, container) {
 
   return () => {
     cancelAnimationFrame(animId)
+    _visIO.disconnect()
     window.removeEventListener('resize', _onResize)
     locSplines.forEach(sp => sp.dispose())
     sprite.dispose()
@@ -738,7 +748,7 @@ function buildScene (canvas, container, opts) {
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: !dark })
   renderer.setSize(W, H)
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, navigator.maxTouchPoints > 0 ? 1 : 1.5))
   renderer.toneMapping = THREE.ACESFilmicToneMapping
   renderer.toneMappingExposure = 1.2
 
@@ -828,6 +838,11 @@ function _loadModel () {
   gltfLoader.load(
     url,
     gltf => {
+      // Liberar el blob de memoria — Three.js ya tiene la geometría en sus propios buffers
+      if (url.startsWith('blob:')) {
+        URL.revokeObjectURL(url)
+        glbBlobUrl.value = null
+      }
       _cachedModel = gltf.scene
       modelProgress.value = 100
       // Inyectar en todas las escenas que estaban esperando
@@ -923,7 +938,7 @@ const open360 = async src => {
   sCam.position.set(0, 0, 0.1)
   sRen = new THREE.WebGLRenderer({ canvas: sphereCanvas.value, antialias: true })
   sRen.setSize(w, h)
-  sRen.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+  sRen.setPixelRatio(Math.min(window.devicePixelRatio, navigator.maxTouchPoints > 0 ? 1 : 1.5))
   sRen.toneMapping = THREE.NoToneMapping
   sRen.outputColorSpace = THREE.SRGBColorSpace
   const geo = new THREE.SphereGeometry(500, 64, 32)
