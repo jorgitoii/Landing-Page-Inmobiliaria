@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <Transition name="gallery-fade">
+    <Transition name="gallery-fade" @after-leave="unlockBodyScroll">
       <div class="gallery-overlay" v-if="open" @click.self="close">
         <div class="gallery-inner">
           <button class="gallery-close" @click="close">
@@ -72,7 +72,7 @@
 
   <!-- 360 viewer -->
   <Teleport to="body">
-    <Transition name="ofade">
+    <Transition name="ofade" @after-leave="unlockBodyScroll">
       <div class="full-overlay-360" v-if="show360" @click.self="close360">
         <button class="ov-close-360" @click="close360">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
@@ -176,12 +176,11 @@ const open360 = async (src, previewSrc = '') => {
 }
 const close360 = () => {
   show360.value = false
-  unlockBodyScroll()
   cancelAnimationFrame(sAnimId)
   if (sRen) { sRen.dispose(); sRen = null }
 }
 
-const close = () => { unlockBodyScroll(); open.value = false }
+const close = () => { open.value = false }
 const openLightbox = (img) => { lightbox.value = { open: true, ...img } }
 const closeLightbox = () => { lightbox.value.open = false }
 
@@ -193,8 +192,7 @@ onMounted(() => {
 })
 onUnmounted(() => {
   window.removeEventListener('open-gallery', onGalleryEvent)
-  if (show360.value) close360()
-  else if (open.value) unlockBodyScroll()
+  unlockBodyScroll()
 })
 </script>
 

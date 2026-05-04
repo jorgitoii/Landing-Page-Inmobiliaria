@@ -46,7 +46,7 @@
 
     <!-- Visor 360 -->
     <Teleport to="body">
-      <Transition name="ofade">
+      <Transition name="ofade" @after-leave="unlockBodyScroll">
         <div class="full-overlay" v-if="show360" @click.self="close360">
           <button class="ov-close" @click="close360">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
@@ -159,7 +159,7 @@ const open360 = async src => {
   cv.addEventListener('touchend',   onTouchEnd)
 }
 
-const close360 = () => { show360.value = false; unlockBodyScroll(); cancelAnimationFrame(sAnimId); if (sRen) { sRen.dispose(); sRen = null } }
+const close360 = () => { show360.value = false; cancelAnimationFrame(sAnimId); if (sRen) { sRen.dispose(); sRen = null } }
 
 const onKey = e => { if (e.key === 'Escape' && show360.value) close360() }
 

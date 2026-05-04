@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <Transition name="appt-fade">
+    <Transition name="appt-fade" @after-leave="unlockBodyScroll">
       <div class="appt-overlay" v-if="open" @click.self="close">
         <div class="appt-panel" ref="panelEl">
 
@@ -332,7 +332,6 @@ const guestsLabel = computed(() => guestsOpts.find(o => o.value === form.guests)
 
 const close = () => {
   removeHintListeners()
-  unlockBodyScroll()
   open.value = false
   submitted.value = false
 }
@@ -364,7 +363,7 @@ const onSubmit = () => {
     if (overlay) {
       overlay.style.transition = 'opacity 1.2s ease'
       overlay.style.opacity = '0'
-      setTimeout(() => { unlockBodyScroll(); open.value = false }, 1200)
+      setTimeout(() => { open.value = false }, 1200)
     } else {
       open.value = false
     }
@@ -404,7 +403,7 @@ onUnmounted(() => {
   window.removeEventListener('open-appointment', onEvent)
   window.removeEventListener('keydown', onKey)
   removeHintListeners()
-  if (open.value) unlockBodyScroll()
+  unlockBodyScroll()
 })
 </script>
 
