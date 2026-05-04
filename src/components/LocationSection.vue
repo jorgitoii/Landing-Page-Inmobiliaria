@@ -100,7 +100,7 @@
           <div class="model-wrap" ref="modelWrap">
             <canvas ref="threeCanvas"></canvas>
 
-            <!-- Scroll strips: 28px transparent edges that allow vertical scroll on mobile -->
+            <!-- Scroll strips: 38px transparent edges that allow vertical scroll on mobile -->
             <div class="canvas-scroll-strip canvas-scroll-strip--left"></div>
             <div class="canvas-scroll-strip canvas-scroll-strip--right"></div>
 
@@ -1061,7 +1061,7 @@ const close3d = () => { show3d.value = false; cancelAnimationFrame(fAnimId); if 
 /* ── Canvas scroll strips (3D model) ─────────────────────── */
 .canvas-scroll-strip {
   position: absolute; top: 0; bottom: 0;
-  width: 28px; z-index: 4;
+  width: 38px; z-index: 4;
   touch-action: pan-y;
   pointer-events: auto;
 }

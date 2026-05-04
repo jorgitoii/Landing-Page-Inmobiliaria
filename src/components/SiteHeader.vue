@@ -60,14 +60,16 @@
         <a href="#" @click.prevent="scrollTo('tarifas')">Tarifas</a>
         <a href="#" @click.prevent="scrollTo('gaussian')">Portal</a>
         <a href="#" @click.prevent="scrollTo('contact')" class="nav-contact">Contacto</a>
-        <button class="btn-test-appt" @click="openAppointment">
-          <svg viewBox="0 0 20 20" fill="none" stroke="white" stroke-width="1.5">
-            <rect x="3" y="4" width="14" height="13" rx="1"/>
-            <path d="M3 8h14M7 2v3M13 2v3"/>
-          </svg>
-          CITA
-        </button>
       </nav>
+
+      <!-- CITA button (mobile only) -->
+      <button class="btn-test-appt btn-cita-mobile" @click="openAppointment">
+        <svg viewBox="0 0 20 20" fill="none" stroke="white" stroke-width="1.5">
+          <rect x="3" y="4" width="14" height="13" rx="1"/>
+          <path d="M3 8h14M7 2v3M13 2v3"/>
+        </svg>
+        CITA
+      </button>
 
       <!-- Hamburger (mobile only) -->
       <button class="hamburger" @click="menuOpen = !menuOpen" :class="{ open: menuOpen }" aria-label="Menú">
@@ -224,7 +226,8 @@ onUnmounted(() => { window.removeEventListener("scroll", onScroll) })
 .mob-menu-enter-active, .mob-menu-leave-active { transition: opacity 0.3s ease, transform 0.3s ease; }
 .mob-menu-enter-from, .mob-menu-leave-to { opacity: 0; transform: translateY(-8px); }
 
-/* Botón de prueba */
+/* Botón CITA */
+.btn-cita-mobile { display: none; }
 .btn-test-appt {
   background: linear-gradient(160deg, #4a1020 0%, #6e1e30 100%);
   color: white; border: none;
@@ -239,5 +242,6 @@ onUnmounted(() => { window.removeEventListener("scroll", onScroll) })
   .site-header { padding: 0 24px; }
   .header-nav  { display: none; }
   .hamburger   { display: flex; }
+  .btn-cita-mobile { display: inline-flex; }
 }
 </style>
