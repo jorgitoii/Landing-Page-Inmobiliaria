@@ -89,7 +89,6 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import * as THREE from 'three'
-import { lockBodyScroll, unlockBodyScroll } from '../composables/useBodyScrollLock.js'
 
 const open = ref(false)
 const activeTab = ref('exterior')
@@ -143,7 +142,6 @@ let sDragging = false, sPX = 0, sPY = 0, sLon = 0, sLat = 0
 
 const open360 = async (src, previewSrc = '') => {
   show360.value = true
-  lockBodyScroll()
   await nextTick(); await nextTick()
   if (!sphereCanvas.value || !sphereWrap.value) return
   const w = sphereWrap.value.clientWidth  || 800
@@ -176,16 +174,15 @@ const open360 = async (src, previewSrc = '') => {
 }
 const close360 = () => {
   show360.value = false
-  unlockBodyScroll()
   cancelAnimationFrame(sAnimId)
   if (sRen) { sRen.dispose(); sRen = null }
 }
 
-const close = () => { unlockBodyScroll(); open.value = false }
+const close = () => { open.value = false }
 const openLightbox = (img) => { lightbox.value = { open: true, ...img } }
 const closeLightbox = () => { lightbox.value.open = false }
 
-const onGalleryEvent = () => { open.value = true; lockBodyScroll() }
+const onGalleryEvent = () => { open.value = true }
 
 onMounted(() => {
   window.addEventListener('open-gallery', onGalleryEvent)
@@ -193,8 +190,7 @@ onMounted(() => {
 })
 onUnmounted(() => {
   window.removeEventListener('open-gallery', onGalleryEvent)
-  if (show360.value) close360()
-  else if (open.value) unlockBodyScroll()
+  close360()
 })
 </script>
 
@@ -446,33 +442,4 @@ onUnmounted(() => {
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; transition: all 0.3s; z-index: 10;
 }
-.ov-close-360:hover { border-color: var(--color-accent); color: var(--color-accent); }
-.ov-close-360 svg   { width: 20px; height: 20px; }
-
-.sphere-wrap-360 {
-  width: 84vw; max-width: 1100px;
-  display: flex; flex-direction: column; gap: 14px;
-}
-.sphere-canvas-360 {
-  width: 100%; height: 64vh; display: block; cursor: grab;
-  background: #060c16;
-  border: 1px solid rgba(122,180,212,0.12);
-}
-.sphere-canvas-360:active { cursor: grabbing; }
-.sphere-hint-360 {
-  text-align: center; font-family: var(--font-serif);
-  font-size: 10px; letter-spacing: 0.38em;
-  color: rgba(200,225,240,0.75); text-transform: uppercase;
-}
-
-/* ── Transitions ── */
-.ofade-enter-active, .ofade-leave-active { transition: opacity 0.35s ease; }
-.ofade-enter-from,   .ofade-leave-to     { opacity: 0; }
-
-/* ── Responsive ── */
-@media (max-width: 768px) {
-  .gallery-inner { padding: 64px 20px 40px; }
-  .gallery-grid  { padding: 0 20px; }
-  .grid-inner    { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
-}
-</style>
+.ov-close-

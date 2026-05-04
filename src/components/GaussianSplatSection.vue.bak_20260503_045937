@@ -1,21 +1,15 @@
 <template>
   <section class="gs-section" id="gaussian" ref="sectionEl">
 
-    <!-- VIDEO — siempre en DOM, controlado por fase:
-         intro  → reproduce a pantalla completa (z alta)
-         panel  → último frame congelado de fondo
-         viewer → último frame congelado encima del canvas (marco)
-         Sin autoplay: arranca cuando el usuario llega al 38% de la sección -->
-    <video
-      ref="introVideo"
-      class="gs-intro-video"
-      :class="`phase-${phase}`"
-      src="https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/Video/Gaussian_video.webm"
-      muted playsinline preload="auto"
-      @timeupdate="onVideoTimeUpdate"
-      @ended="onVideoEnded"
-      @error="onVideoEnded"
-    ></video>
+    <!-- PUERTA CORREDIZA — reemplaza el video intro, funciona en todos los dispositivos -->
+    <div class="gs-puerta" :class="{ 'door-open': doorOpen, [`phase-${phase}`]: true }">
+      <div class="gs-puerta-panel gs-puerta-izq">
+        <img src="https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/Imagenes/GaussianSplattingSection/Prueba%20corrediza/Izquierda.png" alt="" draggable="false" />
+      </div>
+      <div class="gs-puerta-panel gs-puerta-der">
+        <img src="https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/Imagenes/GaussianSplattingSection/Prueba%20corrediza/Derecha.png" alt="" draggable="false" />
+      </div>
+    </div>
 
     <!-- PANEL: discovery mode selection -->
     <Transition name="gsfade">
@@ -138,6 +132,7 @@
         <video ref="gsVideo" class="gs-video" playsinline autoplay muted></video>
         <!-- Bottom home button -->
         <button class="gs-home" @click="exitViewer">Cambiar modo</button>
+
       </div>
     </Transition>
 
@@ -165,21 +160,30 @@ import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 const phase       = ref('intro')   // intro | panel | viewer
 const sectionEl   = ref(null)
 const discoveryOp = ref(1)
-const introVideo = ref(null)
-let   introFallbackTimer = null
-let   videoStarted = false        // evita arrancar el video más de una vez
+const doorOpen    = ref(false)
 
-// Arranca el video — se llama solo cuando scroll llega al 38%
-function startVideo () {
-  if (videoStarted) return
-  videoStarted = true
+
+// Puerta corrediza — config final
+const DOOR_DELAY    = 400    // ms antes de abrir
+const DOOR_DURATION = 4000   // ms de la transición
+
+let doorStarted  = false
+let doorTimer    = null
+let panelTimer   = null
+
+// Arranca la puerta — se llama cuando scroll llega al 38%
+function startDoor () {
+  if (doorStarted) return
+  doorStarted = true
   window.removeEventListener('scroll', onScrollCheck, { passive: true })
-  const v = introVideo.value
-  if (v) v.play().catch(() => {})
-  // Seguro extra: pasar al panel tras 12 s en caso de fallo total
-  introFallbackTimer = setTimeout(() => {
-    if (phase.value === 'intro') phase.value = 'panel'
-  }, 12000)
+
+  doorTimer = setTimeout(() => {
+    doorOpen.value = true
+    // Tras la animación completa → panel de selección
+    panelTimer = setTimeout(() => {
+      if (phase.value === 'intro') phase.value = 'panel'
+    }, DOOR_DURATION + 200)
+  }, DOOR_DELAY)
 }
 
 // Scroll listener: comprueba si la sección está al ≥38% en pantalla
@@ -187,27 +191,9 @@ const onScrollCheck = () => {
   if (!sectionEl.value) return
   const r  = sectionEl.value.getBoundingClientRect()
   const vh = window.innerHeight
-  // progress = qué fracción de la sección ha entrado en el viewport
   const progress = (vh - r.top) / r.height
-  // Discovery overlay: opacidad 1 → 0 al pisar el 10%
   discoveryOp.value = Math.max(0, 1 - progress / 0.10)
-  if (progress >= 0.38) startVideo()
-}
-
-// Al 55% del video → aparece el panel (video sigue corriendo de fondo)
-const onVideoTimeUpdate = () => {
-  const v = introVideo.value
-  if (!v || !v.duration || phase.value !== 'intro') return
-  if (v.currentTime / v.duration >= 0.55) {
-    if (introFallbackTimer) { clearTimeout(introFallbackTimer); introFallbackTimer = null }
-    phase.value = 'panel'
-  }
-}
-
-// Fallback: si el timeupdate no llega
-const onVideoEnded = () => {
-  if (introFallbackTimer) { clearTimeout(introFallbackTimer); introFallbackTimer = null }
-  if (phase.value === 'intro') phase.value = 'panel'
+  if (progress >= 0.38) startDoor()
 }
 
 onMounted(() => {
@@ -220,20 +206,10 @@ onMounted(() => {
   }, { threshold: 0 })
   sectionIO.observe(sectionEl.value)
 
-  // Opt 2: pause intro video when section leaves viewport
-  videoIO = new IntersectionObserver(([entry]) => {
-    const v = introVideo.value
-    if (!v) return
-    if (!entry.isIntersecting) {
-      v.pause()
-    } else if (videoStarted && phase.value === 'intro') {
-      v.play().catch(() => {})
-    }
-  }, { threshold: 0.01 })
-  videoIO.observe(sectionEl.value)
 })
 
 const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' })
+
 
 /* ========================================================
    VIEWER STATE
@@ -246,6 +222,11 @@ const progress  = ref(0)
 const isPanned  = ref(false)
 
 const isMobile   = ref(typeof window !== 'undefined' && navigator.maxTouchPoints > 0)
+
+// Mobile projection offset (NDC units) — slides rendered output without moving camera/target
+// Calibrated on device: X=0.52, Y=0
+const mobNdcX = 0.52
+const mobNdcY = 0.00
 
 const MODE_MOUSE = 'mouse'
 const MODE_FACE  = 'face'
@@ -271,6 +252,7 @@ const BSCALE2  = BSCALE * BSCALE
 const TX0 = 0.0441,  TY0 = 0.049,   TZ0 = -0.0449   // base camera target
 const EX0 = 0.02762, EY0 = 0.05633, EZ0 =  0.25450  // base camera eye
 
+
 // Pan mode (replaces old parallax)
 const LERP    = 0.115
 const PAN_MAX      = 0.114   // mouse pan  (+68% total)
@@ -278,10 +260,9 @@ const PAN_MAX_FACE = 0.828   // webcam pan (+68% total)
 let   panTargX = 0, panTargY = 0
 let   panCurrX = 0, panCurrY = 0
 
-// Opt 1 & 2: IntersectionObservers
+// Opt 1: IntersectionObserver — pausa render loop cuando está fuera de pantalla
 let renderPaused = false
-let sectionIO    = null   // pauses WebGL render loop when off-screen
-let videoIO      = null   // pauses intro video when off-screen
+let sectionIO    = null
 
 // WebGL2 state
 let gl = null, program = null, vao = null, splatCount = 0, rafId = null
@@ -378,10 +359,10 @@ function teardown () {
   if (touchStartHdl) { gsCanvas.value?.removeEventListener('touchstart', touchStartHdl); touchStartHdl = null }
   if (touchMoveHdl)  { gsCanvas.value?.removeEventListener('touchmove',  touchMoveHdl);  touchMoveHdl  = null }
   gyroRef = null
-  if (introFallbackTimer) { clearTimeout(introFallbackTimer); introFallbackTimer = null }
-  // Opt 1 & 2: disconnect IntersectionObservers
+  if (doorTimer)  { clearTimeout(doorTimer);  doorTimer  = null }
+  if (panelTimer) { clearTimeout(panelTimer); panelTimer = null }
+  // Opt 1: disconnect IntersectionObserver
   if (sectionIO) { sectionIO.disconnect(); sectionIO = null }
-  if (videoIO)   { videoIO.disconnect();   videoIO   = null }
   gl = null; program = null; vao = null; splatCount = 0
 }
 
@@ -487,13 +468,16 @@ function makeProgram (vs, fs) {
 /* ========================================================
    CAMERA MATH (pure JS)
    ======================================================== */
-function makePerspective (fov, aspect, near, far) {
+// ndcOffX/Y slide the rendered output in NDC without moving camera or target.
+// Equivalent to CSS translate() on the canvas but entirely inside WebGL — no black bar.
+// Achieved by adding an asymmetric offset to column 2 of the projection matrix.
+function makePerspective (fov, aspect, near, far, ndcOffX = 0, ndcOffY = 0) {
   const f = 1 / Math.tan(fov / 2), nf = 1 / (near - far)
   return new Float32Array([
-    f / aspect, 0,                    0,  0,
-    0,          f,                    0,  0,
-    0,          0, (far + near) * nf, -1,
-    0,          0, 2*far*near*nf,      0,
+    f / aspect,  0,                    0,  0,
+    0,           f,                    0,  0,
+    -ndcOffX,   -ndcOffY, (far + near) * nf, -1,
+    0,           0, 2*far*near*nf,      0,
   ])
 }
 function makeLookAt (ex, ey, ez, tx, ty, tz) {
@@ -535,7 +519,7 @@ async function loadSPLAT () {
   }
 
   loadLabel.value = 'Descargando escena...'
-  const url  = 'https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/3D/Guassian/Table.splat'
+  const url = 'https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/3D/Guassian/Table.splat'
   const resp = await fetch(url)
   if (!resp.ok) { loadLabel.value = 'Error ' + resp.status; return }
 
@@ -655,13 +639,20 @@ function startRender () {
     isPanned.value = Math.abs(panCurrX) + Math.abs(panCurrY) > 0.001
 
     const aspect  = W / H
-    const projMat = makePerspective(FOV, aspect, 0.001, 50)
 
     // Pan: eye and target shift together (keeps look direction stable)
     const viewMat = makeLookAt(
       EX0 + panCurrX, EY0 + panCurrY, EZ0,
       TX0 + panCurrX, TY0 + panCurrY, TZ0
     )
+
+    // Projection offset: slides the rendered output in NDC (like CSS translate but inside WebGL).
+    // Camera, target and pan behavior are unchanged.
+    // Desktop: CSS translate(100px,10px) handles centering — no NDC offset needed.
+    // Mobile: NDC offset calibrated via on-screen tool.
+    const _ndcX = isMobile.value ? mobNdcX : 0
+    const _ndcY = isMobile.value ? mobNdcY : 0
+    const projMat = makePerspective(FOV, aspect, 0.001, 50, _ndcX, _ndcY)
 
     gl.useProgram(program)
     gl.uniformMatrix4fv(uProj,     false, projMat)
@@ -763,35 +754,36 @@ function loadScript (src) {
 .gsfade-enter-active, .gsfade-leave-active { transition: opacity 0.9s ease; }
 .gsfade-enter-from, .gsfade-leave-to       { opacity: 0; }
 
-/* ── VIDEO DE INTRODUCCIÓN ────────────────────────────────
-   Siempre en DOM. Tres estados según la fase.
-   ──────────────────────────────────────────────────────── */
-.gs-intro-video {
+/* ── PUERTA CORREDIZA ─────────────────────────────────── */
+.gs-puerta {
   position: absolute; inset: 0;
+  display: flex;
+  pointer-events: none;
+}
+
+.gs-puerta.phase-intro  { z-index: 8; }
+.gs-puerta.phase-panel  { z-index: 2; }
+.gs-puerta.phase-viewer { z-index: 0; opacity: 0; }
+
+.gs-puerta-panel {
+  width: 50%; height: 100%;
+  overflow: hidden;
+  flex-shrink: 0;
+  transition: transform 4000ms cubic-bezier(0.77, 0, 0.6, 1);
+}
+
+.gs-puerta-panel img {
   width: 100%; height: 100%;
   object-fit: cover;
   display: block;
+  user-select: none;
 }
 
-/* Fase intro: encima de todo, reproduce */
-.gs-intro-video.phase-intro {
-  z-index: 8;
-  pointer-events: none;
-}
+.gs-puerta-izq img { object-position: right center; }
+.gs-puerta-der img { object-position: left center; }
 
-/* Fase panel: último frame visible como fondo/marco detrás del panel de selección */
-.gs-intro-video.phase-panel {
-  z-index: 2;
-  pointer-events: none;
-}
-
-/* Fase viewer: último frame congelado ENCIMA del canvas pero DEBAJO
-   de los controles (.gs-back z-10, .gs-home z-10, .gs-center-hint z-10).
-   pointer-events: none → los clics siguen llegando al canvas */
-.gs-intro-video.phase-viewer {
-  z-index: 2;
-  pointer-events: none;
-}
+.door-open .gs-puerta-izq { transform: translateX(-70%); }
+.door-open .gs-puerta-der { transform: translateX( 70%); }
 
 /* ── PANEL ── */
 .gs-panel {
@@ -800,6 +792,7 @@ function loadScript (src) {
   align-items: center; justify-content: center;
   gap: 48px;
   background: linear-gradient(to bottom, #2a1208 0%, #02060e 100%);
+  padding-top: 72px; /* offset for fixed header */
 }
 .gs-eyebrow {
   font-family: var(--font-jp);
@@ -880,13 +873,20 @@ function loadScript (src) {
 
 /* ── VIEWER ── */
 /* ── VIEWER ── */
+
 .gs-viewer {
   position: absolute; inset: 0;
 }
 .gs-canvas {
-  width: 100%; height: 100%;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   display: block;
+  /* Desktop centering calibrated at 100px right / 10px down */
+  transform: translate(100px, 10px);
 }
+
 .gs-back {
   position: absolute; top: 28px; left: 32px; z-index: 10;
   background: none;
@@ -924,40 +924,4 @@ function loadScript (src) {
 }
 @keyframes fadeHint {
   from { opacity: 0; transform: translateX(-50%) translateY(6px); }
-  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
-}
-
-.gs-loading {
-  position: absolute; inset: 0;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 20px;
-  background: var(--color-black);
-  z-index: 5;
-}
-.gs-loading-txt {
-  font-family: var(--font-serif); font-size: 10px;
-  letter-spacing: 0.4em; text-transform: uppercase;
-  color: rgba(200,225,240,0.4);
-}
-.gs-bar-wrap {
-  width: 220px; height: 1px;
-  background: rgba(122,180,212,0.15);
-}
-.gs-bar {
-  height: 100%;
-  background: var(--color-accent);
-  transition: width 0.3s ease;
-}
-
-@media (max-width: 768px) {
-  .gs-section      { padding: 0; }
-  .gs-ui-layer     { padding: 24px 20px; }
-  .gs-title        { font-size: clamp(1.5rem, 6vw, 2.5rem); letter-spacing: 0.08em; }
-  .gs-eyebrow      { font-size: 10px; letter-spacing: 0.3em; }
-  .gs-opts         { gap: 12px; flex-direction: column; align-items: center; }
-  .gs-opt          { width: 180px; padding: 16px 18px; }
-  .gs-opt-label    { font-size: clamp(0.75rem, 3vw, 0.9rem); }
-  .gs-back-btn     { font-size: 10px; padding: 9px 18px; }
-}
-</style>
-                                                                                                                                                                       
+  to   { opacity: 1; transform: tra

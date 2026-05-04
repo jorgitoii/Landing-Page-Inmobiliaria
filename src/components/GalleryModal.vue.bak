@@ -24,20 +24,22 @@
           </div>
 
           <div class="gallery-grid">
-            <TransitionGroup name="grid-item" tag="div" class="grid-inner">
-              <div
-                v-for="(img, i) in currentImages"
-                :key="img.src"
-                class="grid-card"
-                :style="{ animationDelay: `${i * 0.06}s` }"
-                @click="openLightbox(img)"
-              >
-                <img :src="img.src" :alt="img.alt" />
-                <div class="grid-overlay">
-                  <span>{{ img.alt }}</span>
+            <Transition name="tab-switch" mode="out-in">
+              <div class="grid-inner" :key="activeTab">
+                <div
+                  v-for="(img, i) in currentImages"
+                  :key="img.src"
+                  class="grid-card"
+                  :style="{ animationDelay: `${i * 0.06}s` }"
+                  @click="openLightbox(img)"
+                >
+                  <img :src="img.src" :alt="img.alt" />
+                  <div class="grid-overlay">
+                    <span>{{ img.alt }}</span>
+                  </div>
                 </div>
               </div>
-            </TransitionGroup>
+            </Transition>
           </div>
         </div>
 
@@ -49,6 +51,18 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path d="M18 6L6 18M6 6l12 12"/>
               </svg>
+            </button>
+            <!-- Botón 360 si la imagen tiene versión panorámica -->
+            <button
+              v-if="is360Ready(lightbox.src)"
+              class="lb-btn-360"
+              @click.stop="open360(get360Src(lightbox.src), lightbox.src)"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="lb-btn-360-icon">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
+                <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/>
+              </svg>
+              <span>Vista 360°</span>
             </button>
           </div>
         </Transition>
@@ -88,23 +102,23 @@ const tabs = [
 
 const allImages = {
   exterior: [
-    { src: '/assets/Imagenes/Estaticas/Exterior/Exterior2.png', alt: 'Exterior — Fachada' },
-    { src: '/assets/Imagenes/Estaticas/Exterior/Exterior3.png', alt: 'Exterior — Amanecer' },
-    { src: '/assets/Imagenes/Estaticas/Exterior/Exterior4.png', alt: 'Exterior — Jardín' },
-    { src: '/assets/Imagenes/Estaticas/Exterior/Exterior5.png', alt: 'Exterior — Noche' },
+    { src: 'https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/Imagenes/Estaticas/Exterior/Exterior2.png', alt: 'Exterior — Fachada' },
+    { src: 'https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/Imagenes/Estaticas/Exterior/Exterior3.png', alt: 'Exterior — Amanecer' },
+    { src: 'https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/Imagenes/Estaticas/Exterior/Exterior4.png', alt: 'Exterior — Jardín' },
+    { src: 'https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/Imagenes/Estaticas/Exterior/Exterior5.png', alt: 'Exterior — Noche' },
   ],
   interior: [
-    { src: '/assets/Imagenes/Estaticas/Interior/Interior1_R.png', alt: 'Interior — Habitación' },
-    { src: '/assets/Imagenes/Estaticas/Interior/Interior2.png',   alt: 'Interior — Sala' },
-    { src: '/assets/Imagenes/Estaticas/Interior/Interior3.png',   alt: 'Interior — Terraza' },
-    { src: '/assets/Imagenes/Estaticas/Interior/Interior4.png',   alt: 'Interior — Detalle' },
-    { src: '/assets/Imagenes/Estaticas/Interior/Baño_R.png',      alt: 'Interior — Baño privado' },
-    { src: '/assets/Imagenes/Estaticas/Balcon_R.png',             alt: 'Interior — Balcón' },
+    { src: 'https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/Imagenes/Estaticas/Interior/Interior1_R.png', alt: 'Interior — Habitación' },
+    { src: 'https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/Imagenes/Estaticas/Interior/Interior2.png',   alt: 'Interior — Sala' },
+    { src: 'https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/Imagenes/Estaticas/Interior/Interior3.png',   alt: 'Interior — Terraza' },
+    { src: 'https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/Imagenes/Estaticas/Interior/Interior4.png',   alt: 'Interior — Detalle' },
+    { src: 'https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/Imagenes/Estaticas/Interior/Baño_R.png',      alt: 'Interior — Baño privado' },
+    { src: 'https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/Imagenes/Estaticas/Balcon_R.png',             alt: 'Interior — Balcón' },
   ],
   lobby: [
-    { src: '/assets/Imagenes/Estaticas/Lobby/Lobby1_R.png', alt: 'Lobby — Recepción' },
-    { src: '/assets/Imagenes/Estaticas/Lobby/Lobby2_R.png', alt: 'Lobby — Acceso' },
-    { src: '/assets/Imagenes/Estaticas/Pasillo_R.png',       alt: 'Lobby — Pasillo' },
+    { src: 'https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/Imagenes/Estaticas/Lobby/Lobby1_R.png', alt: 'Lobby — Recepción' },
+    { src: 'https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/Imagenes/Estaticas/Lobby/Lobby2_R.png', alt: 'Lobby — Acceso' },
+    { src: 'https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/Imagenes/Estaticas/Pasillo_R.png',       alt: 'Lobby — Pasillo' },
   ],
 }
 
@@ -116,15 +130,17 @@ const get360Src  = (src) => {
   const filename = src.split('/').pop()
   const base     = filename.replace(/_R(\.[^.]+)$/, '')
   const ext      = filename.split('.').pop()
-  return `/assets/Imagenes/360/${base}.${ext}`
+  return `https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/Imagenes/360/${base}.${ext}`
 }
 
 /* ── 360 viewer ─────────────────────────────────────────── */
-const show360 = ref(false), sphereWrap = ref(null), sphereCanvas = ref(null)
+const show360      = ref(false)
+const sphereWrap   = ref(null)
+const sphereCanvas = ref(null)
 let sAnimId, sRen = null, sCam, sScene
 let sDragging = false, sPX = 0, sPY = 0, sLon = 0, sLat = 0
 
-const open360 = async src => {
+const open360 = async (src, previewSrc = '') => {
   show360.value = true
   await nextTick(); await nextTick()
   if (!sphereCanvas.value || !sphereWrap.value) return
@@ -156,7 +172,11 @@ const open360 = async src => {
   cv.addEventListener('mousedown', dn); cv.addEventListener('mousemove', mv); cv.addEventListener('mouseup', up)
   cv.addEventListener('touchstart', dn, { passive: true }); cv.addEventListener('touchmove', mv, { passive: true }); cv.addEventListener('touchend', up)
 }
-const close360 = () => { show360.value = false; cancelAnimationFrame(sAnimId); if (sRen) { sRen.dispose(); sRen = null } }
+const close360 = () => {
+  show360.value = false
+  cancelAnimationFrame(sAnimId)
+  if (sRen) { sRen.dispose(); sRen = null }
+}
 
 const close = () => { open.value = false }
 const openLightbox = (img) => { lightbox.value = { open: true, ...img } }
@@ -250,7 +270,7 @@ onUnmounted(() => {
 .tab-btn {
   background: none;
   border: none;
-  color: rgba(255,255,255,0.4);
+  color: rgba(255,255,255,0.90);
   font-family: var(--font-serif);
   font-size: 11px;
   font-weight: 400;
@@ -380,12 +400,18 @@ onUnmounted(() => {
 .lb-fade-enter-active, .lb-fade-leave-active { transition: opacity 0.3s ease; }
 .lb-fade-enter-from, .lb-fade-leave-to { opacity: 0; }
 
+/* Tab switch — cross-fade between tabs */
+.tab-switch-leave-active { transition: opacity 0.18s ease; }
+.tab-switch-leave-to     { opacity: 0; }
+.tab-switch-enter-active { transition: opacity 0.28s ease; }
+.tab-switch-enter-from   { opacity: 0; }
+
 /* ── 360 badge ───────────────────────────────────────────── */
 .badge-360 {
   position: absolute; top: 10px; right: 10px; z-index: 3;
   display: flex; flex-direction: column; align-items: center; gap: 2px;
   color: rgba(200,225,240,0.80);
-  animation: pulse360 3s ease-in-out infinite;
+  animation: pulse360 4.2s ease-in-out infinite;
   pointer-events: none;
 }
 .badge-360 svg {
@@ -418,14 +444,31 @@ onUnmounted(() => {
 }
 .ov-close-360:hover { border-color: var(--color-accent); color: var(--color-accent); }
 .ov-close-360 svg   { width: 20px; height: 20px; }
-.sphere-wrap-360 { width: 84vw; max-width: 1100px; display: flex; flex-direction: column; gap: 14px; }
-.sphere-canvas-360 { width: 100%; height: 64vh; display: block; cursor: grab; border: 1px solid rgba(122,180,212,0.12); }
+
+.sphere-wrap-360 {
+  width: 84vw; max-width: 1100px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.sphere-canvas-360 {
+  width: 100%; height: 64vh; display: block; cursor: grab;
+  background: #060c16;
+  border: 1px solid rgba(122,180,212,0.12);
+}
 .sphere-canvas-360:active { cursor: grabbing; }
 .sphere-hint-360 {
-  text-align: center;
-  font-family: var(--font-serif); font-size: 10px;
-  letter-spacing: 0.38em; color: rgba(200,225,240,0.22); text-transform: uppercase;
+  text-align: center; font-family: var(--font-serif);
+  font-size: 10px; letter-spacing: 0.38em;
+  color: rgba(200,225,240,0.75); text-transform: uppercase;
 }
-.ofade-enter-active, .ofade-leave-active { transition: opacity 0.38s ease; }
-.ofade-enter-from,  .ofade-leave-to      { opacity: 0; }
+
+/* ── Transitions ── */
+.ofade-enter-active, .ofade-leave-active { transition: opacity 0.35s ease; }
+.ofade-enter-from,   .ofade-leave-to     { opacity: 0; }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .gallery-inner { padding: 64px 20px 40px; }
+  .gallery-grid  { padding: 0 20px; }
+  .grid-inner    { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+}
 </style>

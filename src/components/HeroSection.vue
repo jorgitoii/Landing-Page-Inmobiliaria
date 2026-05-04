@@ -159,7 +159,7 @@ onUnmounted(() => { window.removeEventListener('scroll', onScroll) })
 .hero-video {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
   display: block;
 }
 .hero-video-overlay {
@@ -296,10 +296,10 @@ onUnmounted(() => { window.removeEventListener('scroll', onScroll) })
 }
 .scroll-label {
   font-family: var(--font-serif);
-  font-size: 12px;
+  font-size: 18px;
   font-weight: 300;
   letter-spacing: 0.45em;
-  color: rgba(200,225,240,0.58);
+  color: rgba(200,225,240,0.35);
   text-transform: uppercase;
   margin-top: 8px;
 }

@@ -110,7 +110,7 @@ const discOp       = ref(1)
 
 // ── Animación pergamino (CSS clip-path + palo) ───────────
 const PERG_DURATION  = 3500
-const PERG_BASE_DELAY = 275
+const PERG_BASE_DELAY = 800
 
 function easeInOutCubic (t) {
   return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3) / 2
@@ -315,7 +315,7 @@ onUnmounted(() => {
 .scroll-video-wrap {
   position: relative;
   width: 100%;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 9 / 14;
   overflow: visible;
   border-radius: 4px;
 }
@@ -448,51 +448,3 @@ onUnmounted(() => {
   color: #c9a84c;
   text-transform: uppercase;
   opacity: 0;
-  transform: translateY(10px);
-  transition: opacity 0.8s ease, transform 0.8s ease;
-}
-.scroll-label.visible { opacity: 0.85; transform: translateY(0); }
-
-/* ── Partículas de polvo dorado ──────────────────────── */
-.dust {
-  position: absolute; inset: 0;
-  pointer-events: none; z-index: 4; overflow: hidden;
-}
-.dust :deep(span) {
-  position: absolute;
-  width: 2px; height: 2px;
-  border-radius: 50%;
-  background: rgba(201,168,76,0.65);
-  opacity: 0;
-}
-
-.scroll-col:nth-child(1) .dust :deep(span) { animation: floatDust var(--dur) var(--del) ease-in-out infinite; }
-.scroll-col:nth-child(2) .dust :deep(span) { animation: floatDust var(--dur) calc(var(--del) + 0.35s) ease-in-out infinite; }
-.scroll-col:nth-child(3) .dust :deep(span) { animation: floatDust var(--dur) calc(var(--del) + 0.70s) ease-in-out infinite; }
-
-@keyframes floatDust {
-  0%   { opacity: 0;   transform: translateY(0) translateX(0); }
-  20%  { opacity: 0.7; }
-  80%  { opacity: 0.3; }
-  100% { opacity: 0;   transform: translateY(-130px) translateX(var(--drift)); }
-}
-
-/* ── Responsive ──────────────────────────────────────── */
-@media (max-width: 900px) {
-  .columns-wrapper { gap: 28px; }
-  .scroll-col { max-width: 260px; }
-}
-@media (max-width: 768px) {
-  .pricing-section { padding: 80px 20px 90px; }
-  .pricing-title   { font-size: clamp(1.6rem, 6vw, 2.4rem); }
-  .pricing-eyebrow { font-size: 11px; letter-spacing: 0.3em; }
-}
-@media (max-width: 640px) {
-  .pricing-section { padding: 72px 18px 80px; }
-  .columns-wrapper { flex-direction: column; align-items: center; gap: 32px; }
-  .scroll-col      { max-width: 300px; width: 100%; }
-  .suite-name      { font-size: 0.95rem; }
-  .suite-desc      { font-size: 0.80rem; }
-  .suite-price     { font-size: 0.98rem; }
-}
-</style>

@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hotel Lain · Label Y Editor (Móvil)</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:      #090d14;
+      --sidebar: rgba(6,16,36,0.92);
+      --accent:  #7ab4d4;
+      --text:    rgba(200,225,240,0.80);
+      --muted:   rgba(122,180,212,0.38);
+      --border:  rgba(122,180,212,0.14);
+      --font:    'Georgia','Times New Roman',serif;
+      --mono:    'Consolas','Courier New',monospace;
+    }
+    body, html {
+      height: 100%; width: 100%;
+      background: var(--bg); color: var(--text);
+      font-family: var(--font); overflow: hidden;
+    }
+
+    /* ── Sidebar ─────────────────────────────────────────── */
+    #sidebar {
+      position: absolute; top: 0; left: 0; bottom: 0; width: 270px;
+      background: var(--sidebar); border-right: 1px solid var(--border);
+      backdrop-filter: blur(18px);
+      display: flex; flex-direction: column; z-index: 100;
+    }
+    .sidebar-header {
+      padding: 18px 16px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    .sidebar-header .eyebrow {
+      font-size: 9px; letter-spacing: 0.5em; text-transform: uppercase;
+      color: var(--muted); display: block; margin-bottom: 5px;
+    }
+    .sidebar-header h1 {
+      font-size: 0.88rem; font-weight: 300; letter-spacing: 0.18em; color: var(--accent);
+    }
+
+    /* ── Label list ── */
+    #outliner {
+      flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 3px;
+    }
+    #outliner::-webkit-scrollbar { width: 3px; }
+    #outliner::-webkit-scrollbar-thumb { background: var(--border); }
+    .section-label {
+      font-size: 9px; letter-spacing: 0.45em; text-transform: uppercase;
+      color: var(--muted); padding: 6px 4px 4px; display: block;
+    }
+    .outliner-item {
+      background: rgba(255,255,255,0.025); padding: 8px 10px;
+      border: 1px solid transparent; display: flex; align-items: center; gap: 8px;
+      cursor: pointer; transition: border-color 0.15s, background 0.15s;
+    }
+    .outliner-item:hover { background: rgba(122,180,212,0.06); border-color: var(--border); }
+    .outliner-item.selected { border-color: rgba(122,180,212,0.45); background: rgba(122,180,212,0.10); }
+    .outliner-num {
+      width: 18px; height: 18px; border-radius: 50%;
+      background: rgba(122,180,212,0.12); border: 1px solid rgba(122,180,212,0.30);
+      font-size: 9px; display: flex; align-items: center; justify-content: center;
+      color: var(--accent); flex-shrink: 0; font-family: var(--mono);
+    }
+    .outliner-item.selected .outliner-num { background: var(--accent); color: #090d14; border-color: var(--accent); }
+    .outliner-name { font-size: 11px; letter-spacing: 0.08em; flex: 1; }
+    .outliner-val { font-family: var(--mono); font-size: 10px; color: var(--accent); }
+
+    /* ── Properties ── */
+    #props {
+      border-top: 1px solid var(--border); padding: 14px 14px 16px; flex-shrink: 0;
+    }
+    .prop-title {
+      font-size: 9px; letter-spacing: 0.45em; text-transform: uppercase;
+      color: var(--muted); display: block; margin-bottom: 12px;
+    }
+
+    /* Y control */
+    .y-row {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+    }
+    .y-label { font-size: 10px; letter-spacing: 0.25em; text-transform: uppercase; color: var(--muted); width: 60px; flex-shrink: 0; }
+    .y-val { font-family: var(--mono); font-size: 14px; color: var(--accent); flex: 1; text-align: center; }
+    .btn-y {
+      width: 30px; height: 30px; border-radius: 50%;
+      border: 1px solid var(--border); background: rgba(122,180,212,0.05);
+      color: var(--text); font-size: 16px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.18s, border-color 0.18s;
+      user-select: none;
+    }
+    .btn-y:hover { background: rgba(122,180,212,0.15); border-color: rgba(122,180,212,0.40); }
+
+    /* Step */
+    .step-row { display: flex; gap: 4px; margin-bottom: 14px; }
+    .step-btn {
+      flex: 1; padding: 5px 0;
+      background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+      color: rgba(200,225,240,0.40); font-family: var(--font); font-size: 9px;
+      letter-spacing: 0.15em; text-transform: uppercase; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .step-btn:hover { color: var(--text); background: rgba(122,180,212,0.08); }
+    .step-btn.active {
+      background: rgba(122,180,212,0.15); border-color: rgba(122,180,212,0.50); color: var(--accent);
+    }
+
+    /* Global offset */
+    .global-row {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 14px;
+      padding: 8px 10px; border: 1px solid var(--border); background: rgba(255,255,255,0.02);
+    }
+    .global-row .y-label { width: auto; }
+    .global-row input[type=number] {
+      width: 60px; background: rgba(0,0,0,0.35); border: 1px solid var(--border);
+      color: var(--accent); font-family: var(--mono); font-size: 12px;
+      padding: 4px 6px; outline: none; text-align: center;
+      transition: border-color 0.18s;
+    }
+    .global-row input:focus { border-color: rgba(122,180,212,0.40); }
+
+    /* Buttons */
+    .btn {
+      display: block; width: 100%; padding: 8px 12px; cursor: pointer;
+      background: rgba(122,180,212,0.05); border: 1px solid var(--border);
+      color: var(--text); font-family: var(--font); font-size: 9px;
+      letter-spacing: 0.25em; text-transform: uppercase;
+      transition: background 0.18s, border-color 0.18s, color 0.18s;
+      margin-bottom: 5px;
+    }
+    .btn:hover { background: rgba(122,180,212,0.13); border-color: rgba(122,180,212,0.35); color: #fff; }
+    .btn.accent { border-color: rgba(122,180,212,0.35); color: var(--accent); }
+    .btn.accent:hover { background: rgba(122,180,212,0.18); }
+
+    /* Toast */
+    #toast {
+      position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
+      background: rgba(122,180,212,0.15); border: 1px solid rgba(122,180,212,0.35);
+      color: #e0eaf4; font-size: 9px; letter-spacing: 0.3em; text-transform: uppercase;
+      padding: 8px 18px; z-index: 200; opacity: 0;
+      transition: opacity 0.3s ease; pointer-events: none;
+    }
+    #toast.show { opacity: 1; }
+
+    /* ── Canvas / Phone preview ───────────────────────────── */
+    #canvas-area {
+      position: absolute; top: 0; left: 270px; right: 0; bottom: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--bg);
+    }
+
+    /* Phone frame */
+    #phone-frame {
+      position: relative;
+      width: 390px; height: 844px;
+      border: 2px solid rgba(122,180,212,0.22);
+      border-radius: 44px;
+      overflow: hidden;
+      box-shadow: 0 0 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(122,180,212,0.08);
+      background: #060c16;
+      flex-shrink: 0;
+    }
+
+    /* Scale frame to fit viewport */
+    #frame-scaler {
+      display: flex; align-items: center; justify-content: center;
+      width: 100%; height: 100%;
+    }
+
+    /* Inside phone */
+    #phone-inner {
+      position: absolute; inset: 0; overflow: hidden;
+    }
+
+    #img-wrapper {
+      position: absolute; top: 0; left: 0;
+      transform-origin: 0 0;
+      transition: transform 0.6s cubic-bezier(0.77,0,0.175,1);
+      z-index: 1;
+    }
+    #restaurant-img {
+      display: block; width: 390px; height: auto;
+      user-select: none; pointer-events: none; draggable: false;
+    }
+
+    #overlay {
+      position: absolute; inset: 0; z-index: 2; pointer-events: none;
+      background:
+        linear-gradient(90deg, rgba(2,6,14,0.25) 0%, rgba(3,8,18,0.14) 30%, rgba(3,8,18,0.14) 70%, rgba(2,6,14,0.25) 100%),
+        linear-gradient(to top,    rgba(6,12,22,0.40) 0%, transparent 30%),
+        linear-gradient(to bottom, rgba(6,12,22,0.40) 0%, transparent 30%);
+    }
+
+    #labels-wrapper {
+      position: absolute; top: 0; left: 0;
+      width: 390px; height: 100%;
+      transform-origin: 0 0;
+      transition: transform 0.6s cubic-bezier(0.77,0,0.175,1);
+      z-index: 3; pointer-events: none;
+    }
+
+    .label {
+      position: absolute;
+      color: rgba(255,255,255,0.75);
+      font-family: Georgia, serif;
+      line-height: 1.4;
+      transition: top 0.22s ease;
+    }
+    .label strong { display: block; font-weight: 700; letter-spacing: 0.04em; margin-bottom: 0.25em; }
+    .label .body-text { font-size: 0.58em; opacity: 0.82; }
+    .label.active-label { outline: 1px dashed rgba(122,180,212,0.6); outline-offset: 3px; }
+
+    /* Nav dots inside phone */
+    #nav-dots {
+      position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+      z-index: 10; display: flex; flex-direction: column; gap: 7px;
+    }
+    .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: rgba(200,224,240,0.25); cursor: pointer;
+      transition: background 0.3s, transform 0.3s;
+    }
+    .dot.active { background: #c8e0f0; transform: scale(1.6); }
+
+    /* Waypoint label inside phone */
+    #wp-badge {
+      position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+      z-index: 10; background: rgba(4,10,24,0.72); border: 1px solid rgba(122,180,212,0.18);
+      padding: 4px 14px; font-size: 9px; letter-spacing: 0.28em;
+      text-transform: uppercase; color: rgba(200,224,240,0.60); white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Sidebar ─────────────────────────────────────────────── -->
+<div id="sidebar">
+  <div class="sidebar-header">
+    <span class="eyebrow">Restaurant Section</span>
+    <h1>Label Y Editor · Móvil</h1>
+  </div>
+
+  <div id="outliner">
+    <span class="section-label">Labels</span>
+    <!-- generado por JS -->
+  </div>
+
+  <div id="props">
+    <span class="prop-title">nyOffsetMobile</span>
+
+    <!-- Global offset -->
+    <div class="global-row">
+      <span class="y-label">Global ↑</span>
+      <input type="number" id="global-input" value="5" step="0.5" min="0">
+      <span style="font-size:10px;color:var(--muted)">px</span>
+    </div>
+
+    <!-- Step selector -->
+    <div class="step-row">
+      <button class="step-btn active" data-step="0.5">0.5</button>
+      <button class="step-btn" data-step="1">1</button>
+      <button class="step-btn" data-step="2">2</button>
+      <button class="step-btn" data-step="5">5</button>
+    </div>
+
+    <!-- Y control -->
+    <div class="y-row">
+      <span class="y-label">Offset</span>
+      <button class="btn-y" id="btn-down">↓</button>
+      <span class="y-val" id="y-display">0.0 px</span>
+      <button class="btn-y" id="btn-up">↑</button>
+    </div>
+
+    <button class="btn accent" id="copy-btn">Copiar config</button>
+    <button class="btn" id="reset-btn">Reset todos</button>
+  </div>
+</div>
+
+<!-- ── Canvas ─────────────────────────────────────────────── -->
+<div id="canvas-area">
+  <div id="frame-scaler">
+    <div id="phone-frame">
+      <div id="phone-inner">
+        <div id="img-wrapper">
+          <img id="restaurant-img"
+            src="https://pub-c06678eb8f2c47aeaf4b1a80eef991aa.r2.dev/assets/Imagenes/Restaurante/Mesa%20refinada.png"
+            alt="Restaurante" draggable="false"
+          />
+        </div>
+        <div id="overlay"></div>
+        <div id="labels-wrapper"></div>
+        <div id="nav-dots"></div>
+        <div id="wp-badge">Waypoint 1</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast">¡Copiado al portapapeles!</div>
+
+<script>
+// ── Config ────────────────────────────────────────────────────────────────
+const PHONE_W = 390
+const PHONE_H = 844
+const MOBILE_ZOOM     = 1.5
+const EDITOR_REF_W    = 1920
+const GLOBAL_OFFSET_DEFAULT = 5
+
+const WAYPOINTS = [
+  { nx: 0.4721, ny: 0.1614 },
+  { nx: 0.5406, ny: 0.3327 },
+  { nx: 0.4713, ny: 0.5057 },
+  { nx: 0.5428, ny: 0.681  },
+  { nx: 0.4739, ny: 0.87   },
+]
+const NUDGES = [0.16, -0.08, 0.14, -0.08, 0.14]
+
+const LABELS = [
+  { name: 'Curry japonés',  nx: 0.5507, ny: 0.1045, nwMobile: 0.31, nyOffsetMobile: 1.5,
+    html: '<strong>Curry japonés</strong><br><span class="body-text">Arroz blanco acompañado de un curry espeso, suave y profundamente aromático, enriquecido con tiernos trozos de carne cocinados a fuego lento. Un plato reconfortante.</span>' },
+  { name: 'Tonkatsu',       nx: 0.5502, ny: 0.4494, nwMobile: 0.31, nyOffsetMobile: 1.2,
+    html: '<strong>Tonkatsu</strong><br><span class="body-text">Corte de cerdo empanizado al estilo japonés, dorado hasta alcanzar un exterior crujiente y un interior jugoso.</span>' },
+  { name: 'Okonomiyaki',    nx: 0.1571, ny: 0.6225, nwMobile: 0.31, nyOffsetMobile: 1.5,
+    html: '<strong>Okonomiyaki</strong><br><span class="body-text">Clásica tortita japonesa preparada a la plancha, con una textura suave y reconfortante.</span>' },
+  { name: 'Yakitori',       nx: 0.5467, ny: 0.8107, nwMobile: 0.31, nyOffsetMobile: 1.5,
+    html: '<strong>Yakitori</strong><br><span class="body-text">Brochetas de pollo cuidadosamente asadas a la parrilla, bañadas en salsa tare ligeramente dulce y ahumada.</span>' },
+  { name: 'Miso',           nx: 0.1536, ny: 0.2759, nwMobile: 0.31, nyOffsetMobile: 1.0,
+    html: '<strong>Miso</strong><br><span class="body-text">Sopa tradicional elaborada a base de pasta de miso, con un perfil delicado y umami.</span>' },
+]
+
+// ── State ─────────────────────────────────────────────────────────────────
+let activeWp     = 0
+let imgH         = 0
+let step         = 0.5
+let globalOffset = GLOBAL_OFFSET_DEFAULT
+
+// ── Elements ──────────────────────────────────────────────────────────────
+const imgEl      = document.getElementById('restaurant-img')
+const imgWrapper = document.getElementById('img-wrapper')
+const labelsWrap = document.getElementById('labels-wrapper')
+const dotsEl     = document.getElementById('nav-dots')
+const wpBadge    = document.getElementById('wp-badge')
+const yDisplay   = document.getElementById('y-display')
+const outliner   = document.getElementById('outliner')
+const toast      = document.getElementById('toast')
+
+// ── Scale phone frame to fit canvas ───────────────────────────────────────
+function scaleFit() {
+  const ca   = document.getElementById('canvas-area')
+  const pf   = document.getElementById('phone-frame')
+  const aw   = ca.clientWidth  - 40
+  const ah   = ca.clientHeight - 40
+  const scaleX = aw / PHONE_W
+  const scaleY = ah / PHONE_H
+  const s = Math.min(scaleX, scaleY, 1)
+  pf.style.transform = `scale(${s})`
+  pf.style.transformOrigin = 'center center'
+}
+scaleFit()
+window.addEventListener('resize', scaleFit)
+
+// ── Build outliner ─────────────────────────────────────────────────────────
+const outlinerItems = []
+LABELS.forEach((label, i) => {
+  const div = document.createElement('div')
+  div.className = 'outliner-item' + (i === 0 ? ' selected' : '')
+  div.innerHTML = `
+    <div class="outliner-num">${i+1}</div>
+    <span class="outliner-name">${label.name}</span>
+    <span class="outliner-val" id="oval-${i}">${label.nyOffsetMobile.toFixed(1)}</span>
+  `
+  div.addEventListener('click', () => selectWp(i))
+  outliner.appendChild(div)
+  outlinerItems.push(div)
+})
+
+// ── Build nav dots ─────────────────────────────────────────────────────────
+WAYPOINTS.forEach((_, i) => {
+  const d = document.createElement('div')
+  d.className = 'dot' + (i === 0 ? ' active' : '')
+  d.addEventListener('click', () => selectWp(i))
+  dotsEl.appendChild(d)
+})
+
+// ── Build label elements ───────────────────────────────────────────────────
+const labelEls = LABELS.map(label => {
+  const el = document.createElement('div')
+  el.className = 'label'
+  el.innerHTML = label.html
+  labelsWrap.appendChild(el)
+  return el
+})
+
+// ── Image load ────────────────────────────────────────────────────────────
+imgEl.addEventListener('load', () => {
+  imgH = (imgEl.naturalHeight / imgEl.naturalWidth) * PHONE_W
+  render()
+})
+if (imgEl.complete && imgEl.naturalWidth) {
+  imgH = (imgEl.naturalHeight / imgEl.naturalWidth) * PHONE_W
+  render()
+}
+
+// ── Render ────────────────────────────────────────────────────────────────
+function render() {
+  if (!imgH) return
+
+  const wp    = WAYPOINTS[activeWp]
+  const nudge = NUDGES[activeWp] ?? 0
+  const s     = MOBILE_ZOOM
+
+  const tx = PHONE_W / 2 - (wp.nx + nudge) * PHONE_W * s
+  const ty = PHONE_H / 2 -  wp.ny          * imgH     * s
+
+  imgWrapper.style.transform  = `translate(${tx}px,${ty}px) scale(${s})`
+  labelsWrap.style.transform  = `translate(${tx}px,${ty}px) scale(${s})`
+
+  const fscale = PHONE_W / EDITOR_REF_W
+
+  LABELS.forEach((label, i) => {
+    const el          = labelEls[i]
+    const totalOffset = globalOffset + (label.nyOffsetMobile ?? 0)
+    Object.assign(el.style, {
+      top:      `${label.ny * imgH - totalOffset}px`,
+      left:     `${label.nx * PHONE_W}px`,
+      width:    `${label.nwMobile * PHONE_W}px`,
+      fontSize: `${(30 * fscale * MOBILE_ZOOM).toFixed(1)}px`,
+    })
+    el.classList.toggle('active-label', i === activeWp)
+  })
+
+  // Update panel display
+  const lbl = LABELS[activeWp]
+  yDisplay.textContent = `${lbl.nyOffsetMobile.toFixed(1)} px`
+  wpBadge.textContent  = `${lbl.name}`
+
+  // Update dots
+  dotsEl.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === activeWp))
+
+  // Update outliner
+  outlinerItems.forEach((item, i) => {
+    item.classList.toggle('selected', i === activeWp)
+    document.getElementById(`oval-${i}`).textContent = LABELS[i].nyOffsetMobile.toFixed(1)
+  })
+}
+
+// ── Select waypoint ───────────────────────────────────────────────────────
+function selectWp(i) {
+  activeWp = Math.max(0, Math.min(WAYPOINTS.length - 1, i))
+  render()
+}
+
+// ── Y controls ────────────────────────────────────────────────────────────
+document.getElementById('btn-up').addEventListener('click', () => {
+  LABELS[activeWp].nyOffsetMobile = +((LABELS[activeWp].nyOffsetMobile + step).toFixed(1))
+  render()
+})
+document.getElementById('btn-down').addEventListener('click', () => {
+  LABELS[activeWp].nyOffsetMobile = +((LABELS[activeWp].nyOffsetMobile - step).toFixed(1))
+  render()
+})
+
+// ── Step selector ─────────────────────────────────────────────────────────
+document.querySelectorAll('.step-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    step = parseFloat(btn.dataset.step)
+    document.querySelectorAll('.step-btn').forEach(b => b.classList.remove('active'))
+    btn.classList.add('active')
+  })
+})
+
+// ── Global offset ─────────────────────────────────────────────────────────
+document.getElementById('global-input').addEventListener('input', e => {
+  globalOffset = parseFloat(e.target.value) || 0
+  render()
+})
+
+// ── Keyboard shortcuts ────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowUp')    { document.getElementById('btn-up').click();   e.preventDefault() }
+  if (e.key === 'ArrowDown')  { document.getElementById('btn-down').click(); e.preventDefault() }
+  if (e.key === 'ArrowRight') { selectWp(activeWp + 1); e.preventDefault() }
+  if (e.key === 'ArrowLeft')  { selectWp(activeWp - 1); e.preventDefault() }
+  if (e.key === '1' || e.key === '2' || e.key === '3' || e.key === '4' || e.key === '5')
+    selectWp(parseInt(e.key) - 1)
+})
+
+// ── Copy config ───────────────────────────────────────────────────────────
+document.getElementById('copy-btn').addEventListener('click', () => {
+  const lines = LABELS.map(l =>
+    `  { name: '${l.name}', nyOffsetMobile: ${l.nyOffsetMobile.toFixed(1)} }`
+  ).join(',\n')
+  const out = `// nyOffsetMobile — pega en RestaurantSection.vue:\n[\n${lines}\n]\n\n// Global offset actual: ${globalOffset}px`
+  navigator.clipboard.writeText(out).then(showToast).catch(() => {
+    prompt('Copia esto:', out)
+  })
+})
+
+// ── Reset ─────────────────────────────────────────────────────────────────
+document.getElementById('reset-btn').addEventListener('click', () => {
+  LABELS.forEach(l => l.nyOffsetMobile = 0)
+  render()
+})
+
+function showToast() {
+  toast.classList.add('show')
+  setTimeout(() => toast.classList.remove('show'), 1800)
+}
+</script>
+</body>
+</html>

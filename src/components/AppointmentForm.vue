@@ -167,7 +167,7 @@ const submitted      = ref(false)
 const panelEl        = ref(null)
 const showScrollHint = ref(true)
 
-/* ── Scroll hint: native listeners for immediate response ── */
+/* ── Scroll hint: native listeners para respuesta inmediata ── */
 let _hintCleanup = []
 
 const removeHintListeners = () => {
@@ -183,9 +183,6 @@ const onScrollIntent = () => {
 const attachHintListeners = () => {
   const el = panelEl.value
   if (!el) return
-  // wheel: fires on mouse wheel / trackpad BEFORE scroll happens
-  // touchstart: fires on first finger touch BEFORE any movement
-  // scroll: fallback catch-all
   ;['wheel', 'touchstart', 'scroll'].forEach(evt => {
     el.addEventListener(evt, onScrollIntent, { passive: true })
     _hintCleanup.push(() => el.removeEventListener(evt, onScrollIntent))
@@ -333,7 +330,12 @@ const guestsOpts = [
 const suiteLabel  = computed(() => suiteOpts.find(o => o.value === form.suite)?.label  || 'Selecciona una opción')
 const guestsLabel = computed(() => guestsOpts.find(o => o.value === form.guests)?.label || 'Selecciona una opción')
 
-const close = () => { open.value = false; submitted.value = false; removeHintListeners(); unlockBodyScroll() }
+const close = () => {
+  removeHintListeners()
+  unlockBodyScroll()
+  open.value = false
+  submitted.value = false
+}
 
 const formErrors = ref({})
 
@@ -362,9 +364,9 @@ const onSubmit = () => {
     if (overlay) {
       overlay.style.transition = 'opacity 1.2s ease'
       overlay.style.opacity = '0'
-      setTimeout(() => { open.value = false; unlockBodyScroll() }, 1200)
+      setTimeout(() => { unlockBodyScroll(); open.value = false }, 1200)
     } else {
-      open.value = false; unlockBodyScroll()
+      open.value = false
     }
   }, 10200)
 
@@ -382,15 +384,15 @@ const onEvent = () => {
   open.value = true
   submitted.value = false
   showScrollHint.value = false
-  removeHintListeners()
   lockBodyScroll()
-  setTimeout(() => {
+  nextTick(() => {
     const el = panelEl.value
-    if (el && (el.scrollHeight - el.clientHeight) > 24 && el.scrollTop === 0) {
+    if (!el) return
+    if (el.scrollHeight - el.clientHeight > 24) {
       showScrollHint.value = true
       attachHintListeners()
     }
-  }, 80)
+  })
 }
 const onKey   = e  => { if (e.key === 'Escape') close() }
 
@@ -401,6 +403,7 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('open-appointment', onEvent)
   window.removeEventListener('keydown', onKey)
+  removeHintListeners()
   if (open.value) unlockBodyScroll()
 })
 </script>
@@ -420,8 +423,7 @@ onUnmounted(() => {
   border: 1px solid rgba(122,180,212,0.15);
   width: 100%; max-width: 680px;
   max-height: 90vh;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
   padding: 36px 40px 40px;
 }
 .appt-panel::before {
@@ -624,6 +626,9 @@ onUnmounted(() => {
 /* ── Transitions ── */
 .appt-fade-enter-active, .appt-fade-leave-active { transition: opacity 0.35s ease; }
 .appt-fade-enter-from,   .appt-fade-leave-to     { opacity: 0; }
+
+.scroll-hint-fade-leave-active { animation: none !important; transition: opacity 0.3s ease; }
+.scroll-hint-fade-leave-to     { opacity: 0; }
 /* ── Responsive ── */
 @media (max-width: 600px) {
   .appt-panel {
@@ -635,29 +640,28 @@ onUnmounted(() => {
 
 }
 
-/* Scroll hint — global */
-.scroll-hint-bar {
-  display: block;
-  position: absolute !important;
-  bottom: 0;
-  left: 0; right: 0;
-  height: 72px;
-  background: linear-gradient(to top, rgba(255,255,255,0.18) 0%, transparent 100%);
-  pointer-events: none;
-  z-index: 310;
-  animation: scroll-hint 2.25s ease-in-out infinite;
+/* Scroll hint — solo mobile */
+.scroll-hint-bar { display: none; }
+
+@media (max-width: 600px) {
+  .scroll-hint-bar {
+    display: block;
+    position: fixed;
+    bottom: 0;
+    left: 0; right: 0;
+    height: 64px;
+    background: linear-gradient(to top, rgba(255,255,255,0.18) 0%, transparent 100%);
+    pointer-events: none;
+    z-index: 310;
+    animation: scroll-hint 1.8s ease-in-out infinite;
+    transition: opacity 0.4s ease;
+  }
 }
 
 @keyframes scroll-hint {
   0%, 100% { opacity: 0.25; }
   50%       { opacity: 1; }
 }
-/* CRÍTICO: animation: none detiene el pulso para que Vue no espere 2.25s */
-.scroll-hint-fade-leave-active {
-  animation: none !important;
-  transition: opacity 0.3s ease;
-}
-.scroll-hint-fade-leave-to { opacity: 0; }
 
 /* ── Modal Alert ── */
 .modal-alert-scene {
@@ -669,4 +673,62 @@ onUnmounted(() => {
 .modal-trees-wrap {
   position: absolute; bottom: 0; left: 0;
   width: 100%; height: 100%;
-  poin
+  pointer-events: none;
+}
+
+:global(.modal-tree) {
+  position: absolute;
+  bottom: 0;
+  transform-origin: bottom center;
+  will-change: transform;
+  max-height: 55vh;
+  width: auto;
+}
+
+.modal-gradient {
+  position: absolute; inset: 0;
+  background: linear-gradient(to bottom, rgba(2,5,12,0) 0%, rgba(2,5,12,1) 100%);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.modal-msg {
+  position: absolute;
+  top: 50%; left: 50%;
+  text-align: center;
+  opacity: 0;
+  z-index: 20;
+  width: 90%; max-width: 640px;
+}
+
+.modal-eyebrow {
+  font-family: var(--font-serif);
+  font-size: 11px;
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  margin-bottom: 18px;
+}
+
+.modal-title {
+  font-family: var(--font-serif);
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  font-weight: 300;
+  letter-spacing: 0.07em;
+  color: var(--color-white);
+  line-height: 1.15;
+  margin-bottom: 16px;
+}
+
+.modal-sub {
+  font-family: var(--font-serif);
+  font-size: 17px;
+  font-weight: 300;
+  letter-spacing: 0.22em;
+  color: rgba(255,255,255,1);
+  background: rgba(122,180,212,0.72);
+  padding: 8px 18px;
+  display: inline-block;
+}
+</style>

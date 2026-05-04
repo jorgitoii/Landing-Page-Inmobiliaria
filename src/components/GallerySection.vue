@@ -159,7 +159,7 @@ const open360 = async src => {
   cv.addEventListener('touchend',   onTouchEnd)
 }
 
-const close360 = () => { show360.value = false; cancelAnimationFrame(sAnimId); if (sRen) { sRen.dispose(); sRen = null }; unlockBodyScroll() }
+const close360 = () => { show360.value = false; unlockBodyScroll(); cancelAnimationFrame(sAnimId); if (sRen) { sRen.dispose(); sRen = null } }
 
 const onKey = e => { if (e.key === 'Escape' && show360.value) close360() }
 
@@ -274,7 +274,7 @@ onUnmounted(() => {
 
 .mg-explore-btn {
   display: inline-flex; align-items: center; gap: 10px;
-  background: rgba(4,12,28,0.60); border: 1px solid rgba(122,180,212,0.28);
+  background: none; border: 1px solid rgba(122,180,212,0.28);
   color: rgba(200,225,240,0.65); padding: 12px 32px;
   font-family: var(--font-serif); font-size: 13px; font-weight: 300;
   letter-spacing: 0.42em; text-transform: uppercase; cursor: pointer;
@@ -348,4 +348,8 @@ onUnmounted(() => {
 @media (max-width: 768px) {
   .mg-grid    { grid-template-columns: 1fr 1fr; gap: 8px; }
   .mg-content { padding: 32px 20px 40px; }
-  .mg-eyebrow { font
+  .mg-eyebrow { font-size: 10px; letter-spacing: 0.32em; margin-bottom: 18px; }
+  .sphere-wrap   { width: 96vw; }
+  .sphere-canvas { height: 52vh; }
+}
+</style>
