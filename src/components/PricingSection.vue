@@ -110,7 +110,7 @@ const discOp       = ref(1)
 
 // ── Animación pergamino (CSS clip-path + palo) ───────────
 const PERG_DURATION  = 3500
-const PERG_BASE_DELAY = 800
+const PERG_BASE_DELAY = 550
 
 function easeInOutCubic (t) {
   return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3) / 2
@@ -315,7 +315,7 @@ onUnmounted(() => {
 .scroll-video-wrap {
   position: relative;
   width: 100%;
-  aspect-ratio: 9 / 14;
+  aspect-ratio: 9 / 11;
   overflow: visible;
   border-radius: 4px;
 }
