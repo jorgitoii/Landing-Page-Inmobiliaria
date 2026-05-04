@@ -124,6 +124,9 @@
 
           </form>
 
+          <!-- Scroll hint mobile -->
+          <div class="scroll-hint-bar"></div>
+
         </div>
       </div>
     </Transition>
@@ -585,15 +588,20 @@ onUnmounted(() => {
   }
   .appt-row { grid-template-columns: 1fr; }
 
-  /* Gradiente indicador de scroll */
-  .appt-panel::after {
-    content: "";
+}
+
+/* Scroll hint — solo mobile */
+.scroll-hint-bar { display: none; }
+
+@media (max-width: 600px) {
+  .scroll-hint-bar {
+    display: block;
     position: sticky;
     bottom: 0;
     left: 0; right: 0;
-    height: 48px;
-    display: block;
-    background: linear-gradient(to top, rgba(200,225,240,0.18) 0%, transparent 100%);
+    height: 52px;
+    margin-top: -52px;
+    background: linear-gradient(to top, rgba(200,225,240,0.22) 0%, transparent 100%);
     pointer-events: none;
     z-index: 2;
     animation: scroll-hint 1.8s ease-in-out infinite;
@@ -601,7 +609,7 @@ onUnmounted(() => {
 }
 
 @keyframes scroll-hint {
-  0%, 100% { opacity: 0.3; }
+  0%, 100% { opacity: 0.25; }
   50%       { opacity: 1; }
 }
 
