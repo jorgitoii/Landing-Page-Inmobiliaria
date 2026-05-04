@@ -2,7 +2,7 @@
   <section ref="sectionRef" class="rest-section" id="restaurante" :style="sectionStyle">
     <div class="rest-sticky">
 
-      <!-- Image + labels wrapper — translated to center active waypoint -->
+      <!-- Image wrapper — imagen sola, z-index 1 (más abajo) -->
       <div class="rest-img-wrapper" :style="wrapperStyle">
         <img
           ref="imgRef"
@@ -13,7 +13,16 @@
           ondragstart="return false"
           @load="onImgLoad"
         />
-        <!-- Menu label overlays (always visible) -->
+      </div>
+
+      <!-- Capa de opacidad de entrada — opaca al entrar, desaparece al 10% -->
+      <div class="rest-intro-overlay" :style="{ opacity: introOp }" />
+
+      <!-- Overlay permanente de bordes/gradiente (z-index 2, en medio) -->
+      <div class="rest-overlay" />
+
+      <!-- Labels wrapper — mismo transform que la imagen, pero z-index 3 (encima) -->
+      <div class="rest-labels-wrapper" :style="wrapperStyle">
         <div
           v-for="(label, i) in LABELS"
           :key="i"
@@ -22,12 +31,6 @@
           v-html="label.html"
         />
       </div>
-
-      <!-- Capa de opacidad de entrada — opaca al entrar, desaparece al 10% -->
-      <div class="rest-intro-overlay" :style="{ opacity: introOp }" />
-
-      <!-- Overlay permanente de bordes/gradiente -->
-      <div class="rest-overlay" />
 
       <!-- Section header — only visible on first waypoint -->
       <header
@@ -47,6 +50,11 @@
           :class="{ active: i === activeWp }"
         />
       </nav>
+
+      <!-- Bottom gradient — visible on first waypoint only, desaparece con scroll hint -->
+      <Transition name="hint-fade">
+        <div class="rest-bottom-grad" v-if="activeWp === 0" />
+      </Transition>
 
       <!-- Scroll hint — visible on first waypoint only -->
       <Transition name="hint-fade">
@@ -69,6 +77,7 @@
         </div>
       </Transition>
 
+
     </div>
   </section>
 </template>
@@ -90,29 +99,34 @@ const WAYPOINTS = [
 
 const LABELS = [
   {
-    nx: 0.5507, ny: 0.1045, nw: 0.3853,
+    name: 'Curry japonés',
+    nx: 0.5507, ny: 0.1045, nw: 0.3853, nwMobile: 0.31, nyOffsetMobile: 41.5,
     html: `<strong>Curry japonés</strong><br><br>Arroz blanco acompañado de un curry espeso, suave y profundamente aromático, enriquecido con tiernos trozos de carne cocinados a fuego lento. Un plato reconfortante que equilibra dulzura, especias y profundidad en cada bocado.`,
-    fontSize: 30, lineHeight: 1.4, color: '#ffffff', textAlign: 'left',
+    fontSize: 30, lineHeight: 1.4, color: 'rgba(255,255,255,0.75)', textAlign: 'left',
   },
   {
-    nx: 0.5502, ny: 0.4494, nw: 0.3651,
+    name: 'Tonkatsu',
+    nx: 0.5502, ny: 0.4494, nw: 0.3651, nwMobile: 0.31, nyOffsetMobile: 30.7,
     html: `<strong>Tonkatsu</strong><br><br>Corte de cerdo empanizado al estilo japonés, dorado hasta alcanzar un exterior crujiente y un interior jugoso, una preparación que combina técnica y confort, ofreciendo un contraste de texturas que resulta profundamente satisfactorio.`,
-    fontSize: 30, lineHeight: 1.4, color: '#ffffff', textAlign: 'left',
+    fontSize: 30, lineHeight: 1.4, color: 'rgba(255,255,255,0.75)', textAlign: 'left',
   },
   {
-    nx: 0.1571, ny: 0.6225, nw: 0.3541,
+    name: 'Okonomiyaki',
+    nx: 0.1571, ny: 0.6225, nw: 0.3541, nwMobile: 0.31, nyOffsetMobile: 33.5,
     html: `<strong>Okonomiyaki</strong><br><br>Clásica tortita japonesa preparada a la plancha, con una textura suave y reconfortante. Terminada con capas de salsa intensa y mayonesa delicadamente trazada, acompañada de hojuelas que reaccionan al calor, creando una experiencia visual y sensorial única.`,
-    fontSize: 30, lineHeight: 1.4, color: '#ffffff', textAlign: 'left',
+    fontSize: 30, lineHeight: 1.4, color: 'rgba(255,255,255,0.75)', textAlign: 'left',
   },
   {
-    nx: 0.5467, ny: 0.8107, nw: 0.3787,
+    name: 'Yakitori',
+    nx: 0.5467, ny: 0.8107, nw: 0.3787, nwMobile: 0.31, nyOffsetMobile: 37.5,
     html: `<strong>Yakitori</strong><br><br>Brochetas de pollo cuidadosamente asadas a la parrilla, bañadas en salsa tare ligeramente dulce y ahumada. Cada pieza logra un equilibrio perfecto entre jugosidad interior y ese toque caramelizado que define la tradición callejera japonesa llevada a un nivel refinado.`,
-    fontSize: 30, lineHeight: 1.4, color: '#ffffff', textAlign: 'left',
+    fontSize: 30, lineHeight: 1.4, color: 'rgba(255,255,255,0.75)', textAlign: 'left',
   },
   {
-    nx: 0.1536, ny: 0.2759, nw: 0.3651,
+    name: 'Miso',
+    nx: 0.1536, ny: 0.2759, nw: 0.3651, nwMobile: 0.31, nyOffsetMobile: 14.0,
     html: `<strong>Miso</strong><br><br>Sopa tradicional elaborada a base de pasta de miso, con un perfil delicado y umami. Integra tofu, algas y notas sutiles del mar, ofreciendo una experiencia cálida, ligera y profundamente reconfortante.`,
-    fontSize: 30, lineHeight: 1.4, color: '#ffffff', textAlign: 'left',
+    fontSize: 30, lineHeight: 1.4, color: 'rgba(255,255,255,0.75)', textAlign: 'left',
   },
 ]
 
@@ -135,9 +149,10 @@ const imgLoaded    = ref(false)
 const imgRenderedH = ref(0)
 const vpW          = ref(typeof window !== 'undefined' ? window.innerWidth  : 1920)
 const vpH          = ref(typeof window !== 'undefined' ? window.innerHeight : 1080)
-const introOp      = ref(1)   // 1 = negro opaco → 0 = transparente (igual que ArchitectsSection)
+const introOp      = ref(1)
 const showHint     = ref(false)
 let   hintTimer    = null
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Image wrapper transform — centers the active waypoint in the viewport
@@ -169,14 +184,17 @@ const wrapperStyle = computed(() => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function getLabelStyle(label) {
-  const scale = vpW.value / EDITOR_REF_WIDTH
+  const scale    = vpW.value / EDITOR_REF_WIDTH
+  const isMobile = vpW.value <= 768
+  const nw       = isMobile && label.nwMobile != null ? label.nwMobile : label.nw
+  const fz       = isMobile ? label.fontSize * scale * MOBILE_ZOOM : label.fontSize * scale
   return {
     left:       `${label.nx * vpW.value}px`,
-    top:        `${label.ny * imgRenderedH.value}px`,
-    width:      `${label.nw * vpW.value}px`,
+    top:        `${label.ny * imgRenderedH.value - (isMobile ? 5 + (label.nyOffsetMobile ?? 0) : 0)}px`,
+    width:      `${nw * vpW.value}px`,
     color:      label.color,
     fontFamily: 'Georgia, serif',
-    fontSize:   `${(label.fontSize * scale).toFixed(1)}px`,
+    fontSize:   `${fz.toFixed(1)}px`,
     lineHeight:  label.lineHeight,
     textAlign:   label.textAlign,
   }
@@ -342,9 +360,22 @@ onUnmounted(() => {
   position: absolute;
   top: 0;
   left: 0;
+  z-index: 1;
   will-change: transform;
   transition: transform 1.4s cubic-bezier(0.77, 0, 0.175, 1);
   transform-origin: 0 0;
+}
+
+/* Labels wrapper — mismo transform que la imagen, encima de las bandas */
+.rest-labels-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  will-change: transform;
+  transition: transform 1.4s cubic-bezier(0.77, 0, 0.175, 1);
+  transform-origin: 0 0;
+  pointer-events: none;
 }
 
 .rest-img {
@@ -400,24 +431,24 @@ onUnmounted(() => {
 .rest-overlay {
   position: absolute;
   inset: 0;
-  z-index: 5;
+  z-index: 2;
   pointer-events: none;
   background: linear-gradient(
     90deg,
-    rgba(2, 6, 14, 0.72) 0%,
-    rgba(3, 8, 18, 0.18) 30%,
-    rgba(3, 8, 18, 0.18) 70%,
-    rgba(2, 6, 14, 0.72) 100%
+    rgba(2, 6, 14, 0.25) 0%,
+    rgba(3, 8, 18, 0.14) 30%,
+    rgba(3, 8, 18, 0.14) 70%,
+    rgba(2, 6, 14, 0.25) 100%
   ),
   linear-gradient(
     to top,
-    rgba(6, 12, 22, 0.65) 0%,
-    transparent 35%
+    rgba(6, 12, 22, 0.40) 0%,
+    transparent 30%
   ),
   linear-gradient(
     to bottom,
-    rgba(6, 12, 22, 0.5) 0%,
-    transparent 25%
+    rgba(6, 12, 22, 0.40) 0%,
+    transparent 30%
   );
 }
 
@@ -534,36 +565,9 @@ onUnmounted(() => {
 .hint-fade-enter-active, .hint-fade-leave-active { transition: opacity 0.55s ease; }
 .hint-fade-enter-from,   .hint-fade-leave-to     { opacity: 0; }
 
-/* ── Rest scroll hint ─────────────────────────────────────── */
-.rest-scroll-hint {
+/* ── Bottom gradient — primer waypoint ───────────────────── */
+.rest-bottom-grad {
   position: absolute;
-  bottom: 44px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  z-index: 15;
-  pointer-events: none;
-}
-.rest-scroll-line {
-  display: block;
-  width: 1px;
-  height: 52px;
-  background: linear-gradient(to bottom, transparent, var(--color-accent));
-  animation: restScrollPulse 2.2s ease-in-out infinite;
-}
-.rest-scroll-label {
-  font-family: var(--font-serif);
-  font-size: 18px;
-  font-weight: 300;
-  letter-spacing: 0.45em;
-  color: rgba(200,225,240,0.35);
-  text-transform: uppercase;
-}
-@keyframes restScrollPulse {
-  0%, 100% { opacity: 0.3; transform: scaleY(1); }
-  50%       { opacity: 1;   transform: scaleY(1.1); }
-}
-</style>
+  bottom: 0; left: 0; right: 0;
+  height: 240px;
+  z-index: 1

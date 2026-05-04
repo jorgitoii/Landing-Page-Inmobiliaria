@@ -238,10 +238,19 @@ onUnmounted(() => { window.removeEventListener("scroll", onScroll) })
 .btn-test-appt svg { width: 17px; height: 17px; }
 
 /* Responsive */
-@media (max-width: 900px) {
-  .site-header { padding: 0 24px; }
-  .header-nav  { display: none; }
-  .hamburger   { display: flex; }
+
+/* Zona de compresión: el nav cabe pero apretado — reducir gaps y padding */
+@media (max-width: 1280px) {
+  .site-header   { padding: 0 32px; }
+  .header-nav    { gap: 0; }
+  .header-nav a  { padding: 10px 7px; letter-spacing: 0.13em; }
+}
+
+/* Hamburger: por debajo de aquí el nav ya no cabe aunque esté comprimido */
+@media (max-width: 1080px) {
+  .site-header     { padding: 0 24px; }
+  .header-nav      { display: none; }
+  .hamburger       { display: flex; }
   .btn-cita-mobile { display: inline-flex; }
 }
 </style>

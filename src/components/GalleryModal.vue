@@ -89,6 +89,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import * as THREE from 'three'
+import { lockBodyScroll, unlockBodyScroll } from '../composables/useBodyScrollLock.js'
 
 const open = ref(false)
 const activeTab = ref('exterior')
@@ -142,6 +143,7 @@ let sDragging = false, sPX = 0, sPY = 0, sLon = 0, sLat = 0
 
 const open360 = async (src, previewSrc = '') => {
   show360.value = true
+  lockBodyScroll()
   await nextTick(); await nextTick()
   if (!sphereCanvas.value || !sphereWrap.value) return
   const w = sphereWrap.value.clientWidth  || 800
@@ -176,13 +178,14 @@ const close360 = () => {
   show360.value = false
   cancelAnimationFrame(sAnimId)
   if (sRen) { sRen.dispose(); sRen = null }
+  unlockBodyScroll()
 }
 
-const close = () => { open.value = false }
+const close = () => { open.value = false; unlockBodyScroll() }
 const openLightbox = (img) => { lightbox.value = { open: true, ...img } }
 const closeLightbox = () => { lightbox.value.open = false }
 
-const onGalleryEvent = () => { open.value = true }
+const onGalleryEvent = () => { open.value = true; lockBodyScroll() }
 
 onMounted(() => {
   window.addEventListener('open-gallery', onGalleryEvent)
@@ -191,6 +194,7 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('open-gallery', onGalleryEvent)
   close360()
+  if (open.value) unlockBodyScroll()
 })
 </script>
 
@@ -466,9 +470,4 @@ onUnmounted(() => {
 .ofade-enter-from,   .ofade-leave-to     { opacity: 0; }
 
 /* ── Responsive ── */
-@media (max-width: 768px) {
-  .gallery-inner { padding: 64px 20px 40px; }
-  .gallery-grid  { padding: 0 20px; }
-  .grid-inner    { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
-}
-</style>
+@media (max-wi
