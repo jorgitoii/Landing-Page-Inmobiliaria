@@ -57,7 +57,7 @@ const heroEl  = ref(null)
 const videoEl = ref(null)
 
 /* ---- Intro: letter-by-letter ---- */
-const rawLines = ['La paz', 'se respira', 'aqui...']
+const rawLines = ['La paz', 'se respira', 'aquí...']
 
 // Pre-compute char data with staggered delays (narrative pace)
 const charData = computed(() => {
@@ -244,10 +244,10 @@ onUnmounted(() => { window.removeEventListener('scroll', onScroll) })
 
 .hero-tagline {
   font-family: var(--font-jp);
-  font-size: 11px;
+  font-size: 15px;
   font-weight: 200;
   letter-spacing: 0.45em;
-  color: var(--color-accent);
+  color: rgba(245,250,255,0.92);
   margin-bottom: 20px;
   text-transform: uppercase;
 }
@@ -262,11 +262,12 @@ onUnmounted(() => { window.removeEventListener('scroll', onScroll) })
 }
 .hero-sub {
   font-family: var(--font-serif);
-  font-size: clamp(0.9rem, 1.4vw, 1.1rem);
+  font-size: clamp(0.96rem, 1.49vw, 1.17rem);
   font-weight: 300;
   font-style: italic;
   letter-spacing: 0.18em;
-  color: rgba(200, 225, 240, 0.55);
+  color: rgba(225, 238, 248, 0.78);
+  margin-top: 7px;
 }
 
 .scroll-hint {
@@ -295,7 +296,7 @@ onUnmounted(() => { window.removeEventListener('scroll', onScroll) })
 }
 .scroll-label {
   font-family: var(--font-serif);
-  font-size: 9px;
+  font-size: 18px;
   font-weight: 300;
   letter-spacing: 0.45em;
   color: rgba(200,225,240,0.35);
@@ -306,8 +307,8 @@ onUnmounted(() => { window.removeEventListener('scroll', onScroll) })
 @media (max-width: 768px) {
   .hero-video   { object-fit: cover; }
   .hero-title   { font-size: clamp(2.8rem, 13vw, 5rem); margin-bottom: 16px; }
-  .hero-sub     { font-size: clamp(0.8rem, 3.5vw, 1rem); letter-spacing: 0.10em; }
-  .hero-tagline { font-size: 10px; margin-bottom: 12px; }
+  .hero-sub     { font-size: clamp(0.85rem, 3.74vw, 1.06rem); letter-spacing: 0.10em; }
+  .hero-tagline { font-size: 13px; margin-bottom: 12px; }
   .scroll-hint  { bottom: 28px; }
 }
 </style>

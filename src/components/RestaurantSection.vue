@@ -48,6 +48,14 @@
         />
       </nav>
 
+      <!-- Scroll hint — visible on first waypoint only -->
+      <Transition name="hint-fade">
+        <div class="rest-scroll-hint" v-if="activeWp === 0">
+          <span class="rest-scroll-line"></span>
+          <span class="rest-scroll-label">Scroll</span>
+        </div>
+      </Transition>
+
       <!-- Swipe hint — visible on mobile when section is active -->
       <Transition name="hint-fade">
         <div class="swipe-hint" v-if="showHint">
@@ -525,4 +533,37 @@ onUnmounted(() => {
 
 .hint-fade-enter-active, .hint-fade-leave-active { transition: opacity 0.55s ease; }
 .hint-fade-enter-from,   .hint-fade-leave-to     { opacity: 0; }
+
+/* ── Rest scroll hint ─────────────────────────────────────── */
+.rest-scroll-hint {
+  position: absolute;
+  bottom: 44px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  z-index: 15;
+  pointer-events: none;
+}
+.rest-scroll-line {
+  display: block;
+  width: 1px;
+  height: 52px;
+  background: linear-gradient(to bottom, transparent, var(--color-accent));
+  animation: restScrollPulse 2.2s ease-in-out infinite;
+}
+.rest-scroll-label {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 300;
+  letter-spacing: 0.45em;
+  color: rgba(200,225,240,0.35);
+  text-transform: uppercase;
+}
+@keyframes restScrollPulse {
+  0%, 100% { opacity: 0.3; transform: scaleY(1); }
+  50%       { opacity: 1;   transform: scaleY(1.1); }
+}
 </style>
