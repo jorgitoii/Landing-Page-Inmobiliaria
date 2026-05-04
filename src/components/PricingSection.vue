@@ -315,7 +315,7 @@ onUnmounted(() => {
 .scroll-video-wrap {
   position: relative;
   width: 100%;
-  aspect-ratio: 9 / 8;
+  aspect-ratio: 1 / 1;
   overflow: visible;
   border-radius: 4px;
 }

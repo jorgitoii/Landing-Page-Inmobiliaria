@@ -444,44 +444,31 @@ onUnmounted(() => {
 }
 .ov-close-360:hover { border-color: var(--color-accent); color: var(--color-accent); }
 .ov-close-360 svg   { width: 20px; height: 20px; }
-.sphere-wrap-360 { width: 84vw; max-width: 1100px; display: flex; flex-direction: column; gap: 14px; }
 
+.sphere-wrap-360 {
+  width: 84vw; max-width: 1100px;
+  display: flex; flex-direction: column; gap: 14px;
+}
 .sphere-canvas-360 {
   width: 100%; height: 64vh; display: block; cursor: grab;
   background: #060c16;
   border: 1px solid rgba(122,180,212,0.12);
 }
 .sphere-canvas-360:active { cursor: grabbing; }
-
 .sphere-hint-360 {
-  text-align: center;
-  font-family: var(--font-serif); font-size: 10px;
-  letter-spacing: 0.38em; color: rgba(200,225,240,0.75); text-transform: uppercase;
+  text-align: center; font-family: var(--font-serif);
+  font-size: 10px; letter-spacing: 0.38em;
+  color: rgba(200,225,240,0.75); text-transform: uppercase;
 }
-.ofade-enter-active, .ofade-leave-active { transition: opacity 0.38s ease; }
-.ofade-enter-from,  .ofade-leave-to      { opacity: 0; }
 
-/* ── Botón 360 en el lightbox ─────────────────────────────── */
-.lb-btn-360 {
-  position: absolute;
-  bottom: 28px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(2,6,14,0.72);
-  border: 1px solid rgba(122,180,212,0.30);
-  color: rgba(200,225,240,0.85);
-  font-family: var(--font-serif);
-  font-size: 10px;
-  letter-spacing: 0.30em;
-  text-transform: uppercase;
-  padding: 10px 22px;
-  cursor: pointer;
-  transition: border-color 0.3s, color 0.3s;
-  backdrop-filter: blur(6px);
+/* ── Transitions ── */
+.ofade-enter-active, .ofade-leave-active { transition: opacity 0.35s ease; }
+.ofade-enter-from,   .ofade-leave-to     { opacity: 0; }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .gallery-inner { padding: 64px 20px 40px; }
+  .gallery-grid  { padding: 0 20px; }
+  .grid-inner    { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
 }
-.lb-btn-360:hover { border-color: var(--color-accent); color: var(--color-accent); }
-.lb-btn-360-icon  { width: 16px; height: 16px; }
 </style>
