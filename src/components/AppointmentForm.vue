@@ -372,9 +372,9 @@ onUnmounted(() => {
   background: rgba(4,10,24,0.55);
   border: 1px solid rgba(122,180,212,0.15);
   width: 100%; max-width: 680px;
-  max-height: 90vh; overflow-y: auto;
-  padding: 36px 40px 40px;
+  max-height: 90vh;
   overflow: hidden;
+  padding: 36px 40px 40px;
 }
 .appt-panel::before {
   content: "";
@@ -537,7 +537,7 @@ onUnmounted(() => {
 .csel-menu {
   position: absolute; top: calc(100% + 2px); left: 0; right: 0;
   z-index: 99;
-  background: rgba(4,10,24,0.55);
+  background: rgba(4,10,24,0.90);
   backdrop-filter: blur(32px);
   -webkit-backdrop-filter: blur(32px);
   border: 1px solid rgba(122,180,212,0.18);
@@ -578,8 +578,31 @@ onUnmounted(() => {
 .appt-fade-enter-from,   .appt-fade-leave-to     { opacity: 0; }
 /* ── Responsive ── */
 @media (max-width: 600px) {
-  .appt-panel { padding: 24px 20px 28px; }
-  .appt-row   { grid-template-columns: 1fr; }
+  .appt-panel {
+    padding: 24px 20px 28px;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  .appt-row { grid-template-columns: 1fr; }
+
+  /* Gradiente indicador de scroll */
+  .appt-panel::after {
+    content: "";
+    position: sticky;
+    bottom: 0;
+    left: 0; right: 0;
+    height: 48px;
+    display: block;
+    background: linear-gradient(to top, rgba(200,225,240,0.18) 0%, transparent 100%);
+    pointer-events: none;
+    z-index: 2;
+    animation: scroll-hint 1.8s ease-in-out infinite;
+  }
+}
+
+@keyframes scroll-hint {
+  0%, 100% { opacity: 0.3; }
+  50%       { opacity: 1; }
 }
 
 /* ── Modal Alert ── */
