@@ -2,7 +2,7 @@
   <Teleport to="body">
     <Transition name="appt-fade">
       <div class="appt-overlay" v-if="open" @click.self="close">
-        <div class="appt-panel">
+        <div class="appt-panel" ref="panelEl" @scroll="onPanelScroll">
 
           <!-- Header del panel -->
           <div class="appt-header">
@@ -125,7 +125,7 @@
           </form>
 
           <!-- Scroll hint mobile -->
-          <div class="scroll-hint-bar"></div>
+          <div class="scroll-hint-bar" v-if="showScrollHint"></div>
 
         </div>
       </div>
@@ -159,8 +159,17 @@ const vClickOutside = {
   unmounted(el) { document.removeEventListener('mousedown', el._outside) }
 }
 
-const open      = ref(false)
-const submitted = ref(false)
+const open           = ref(false)
+const submitted      = ref(false)
+const panelEl        = ref(null)
+const showScrollHint = ref(true)
+
+const onPanelScroll = () => {
+  const el = panelEl.value
+  if (!el) return
+  const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 16
+  if (atBottom) showScrollHint.value = false
+}
 
 /* ── Modal Alert ── */
 const showModal      = ref(false)
@@ -348,7 +357,7 @@ const onSubmit = () => {
   }, 9500)
 }
 
-const onEvent = () => { open.value = true; submitted.value = false }
+const onEvent = () => { open.value = true; submitted.value = false; showScrollHint.value = true }
 const onKey   = e  => { if (e.key === 'Escape') close() }
 
 onMounted(() => {
@@ -596,15 +605,15 @@ onUnmounted(() => {
 @media (max-width: 600px) {
   .scroll-hint-bar {
     display: block;
-    position: sticky;
+    position: fixed;
     bottom: 0;
     left: 0; right: 0;
-    height: 52px;
-    margin-top: -52px;
-    background: linear-gradient(to top, rgba(200,225,240,0.22) 0%, transparent 100%);
+    height: 64px;
+    background: linear-gradient(to top, rgba(255,255,255,0.18) 0%, transparent 100%);
     pointer-events: none;
-    z-index: 2;
+    z-index: 310;
     animation: scroll-hint 1.8s ease-in-out infinite;
+    transition: opacity 0.4s ease;
   }
 }
 
