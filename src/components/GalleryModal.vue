@@ -52,6 +52,18 @@
                 <path d="M18 6L6 18M6 6l12 12"/>
               </svg>
             </button>
+            <!-- Botón 360 si la imagen tiene versión panorámica -->
+            <button
+              v-if="is360Ready(lightbox.src)"
+              class="lb-btn-360"
+              @click.stop="open360(get360Src(lightbox.src), lightbox.src)"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="lb-btn-360-icon">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
+                <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/>
+              </svg>
+              <span>Vista 360°</span>
+            </button>
           </div>
         </Transition>
       </div>
@@ -122,11 +134,13 @@ const get360Src  = (src) => {
 }
 
 /* ── 360 viewer ─────────────────────────────────────────── */
-const show360 = ref(false), sphereWrap = ref(null), sphereCanvas = ref(null)
+const show360      = ref(false)
+const sphereWrap   = ref(null)
+const sphereCanvas = ref(null)
 let sAnimId, sRen = null, sCam, sScene
 let sDragging = false, sPX = 0, sPY = 0, sLon = 0, sLat = 0
 
-const open360 = async src => {
+const open360 = async (src, previewSrc = '') => {
   show360.value = true
   await nextTick(); await nextTick()
   if (!sphereCanvas.value || !sphereWrap.value) return
@@ -158,7 +172,11 @@ const open360 = async src => {
   cv.addEventListener('mousedown', dn); cv.addEventListener('mousemove', mv); cv.addEventListener('mouseup', up)
   cv.addEventListener('touchstart', dn, { passive: true }); cv.addEventListener('touchmove', mv, { passive: true }); cv.addEventListener('touchend', up)
 }
-const close360 = () => { show360.value = false; cancelAnimationFrame(sAnimId); if (sRen) { sRen.dispose(); sRen = null } }
+const close360 = () => {
+  show360.value = false
+  cancelAnimationFrame(sAnimId)
+  if (sRen) { sRen.dispose(); sRen = null }
+}
 
 const close = () => { open.value = false }
 const openLightbox = (img) => { lightbox.value = { open: true, ...img } }
@@ -427,8 +445,14 @@ onUnmounted(() => {
 .ov-close-360:hover { border-color: var(--color-accent); color: var(--color-accent); }
 .ov-close-360 svg   { width: 20px; height: 20px; }
 .sphere-wrap-360 { width: 84vw; max-width: 1100px; display: flex; flex-direction: column; gap: 14px; }
-.sphere-canvas-360 { width: 100%; height: 64vh; display: block; cursor: grab; border: 1px solid rgba(122,180,212,0.12); }
+
+.sphere-canvas-360 {
+  width: 100%; height: 64vh; display: block; cursor: grab;
+  background: #060c16;
+  border: 1px solid rgba(122,180,212,0.12);
+}
 .sphere-canvas-360:active { cursor: grabbing; }
+
 .sphere-hint-360 {
   text-align: center;
   font-family: var(--font-serif); font-size: 10px;
@@ -436,4 +460,28 @@ onUnmounted(() => {
 }
 .ofade-enter-active, .ofade-leave-active { transition: opacity 0.38s ease; }
 .ofade-enter-from,  .ofade-leave-to      { opacity: 0; }
+
+/* ── Botón 360 en el lightbox ─────────────────────────────── */
+.lb-btn-360 {
+  position: absolute;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(2,6,14,0.72);
+  border: 1px solid rgba(122,180,212,0.30);
+  color: rgba(200,225,240,0.85);
+  font-family: var(--font-serif);
+  font-size: 10px;
+  letter-spacing: 0.30em;
+  text-transform: uppercase;
+  padding: 10px 22px;
+  cursor: pointer;
+  transition: border-color 0.3s, color 0.3s;
+  backdrop-filter: blur(6px);
+}
+.lb-btn-360:hover { border-color: var(--color-accent); color: var(--color-accent); }
+.lb-btn-360-icon  { width: 16px; height: 16px; }
 </style>
