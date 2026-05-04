@@ -1304,7 +1304,7 @@ const close3d = () => { show3d.value = false; cancelAnimationFrame(fAnimId); if 
 .loc-bottom-grid {
   position: relative; z-index: 1;
   display: grid;
-  grid-template-columns: 35fr 65fr;
+  grid-template-columns: 41.5fr 58.5fr;
   gap: 24px;
   width: 100%;
   box-sizing: border-box;
@@ -1562,8 +1562,8 @@ const close3d = () => { show3d.value = false; cancelAnimationFrame(fAnimId); if 
   transition: opacity 0.55s ease;
 }
 @keyframes poiAutoPulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.52; }
+  0%, 100% { opacity: 1;    filter: brightness(1.45); }
+  50%       { opacity: 0.52; filter: brightness(0.90); }
 }
 
 /* ── Model card ────────────────────────────────────────── */
